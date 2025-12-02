@@ -58,6 +58,14 @@ const Profile = () => {
         } catch (err) {
             console.error('Erro ao atualizar perfil:', err);
             error('Erro ao atualizar perfil. Tente novamente.');
+            console.error('Erro detalhado ao atualizar perfil:', err);
+            console.error('Status da resposta:', err.response?.status);
+            console.error('Token presente:', !!token);
+            console.error('URL da API:', 'http://localhost:3000/profile');
+            console.error('Dados enviados:', {
+                name: formData.name,
+                email: formData.email
+            });
         } finally {
             setLoading(false);
         }
