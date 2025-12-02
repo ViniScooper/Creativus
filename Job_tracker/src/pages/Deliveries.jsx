@@ -1,12 +1,54 @@
-import React from 'react';
-import { projects } from '../data/mockData';
+import React, { useState, useEffect } from 'react';
 import { File, Download, ExternalLink } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 const Deliveries = () => {
-    // Flatten all deliveries from all projects
-    const allDeliveries = projects.flatMap(p =>
-        p.deliveries.map(d => ({ ...d, projectTitle: p.title, projectId: p.id }))
-    );
+    const [deliveries, setDeliveries] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const { token, user } = useAuth();
+
+    useEffect(() => {
+        fetchDeliveries();
+    }, [token]);
+
+    const fetchDeliveries = async () => {
+        try {
+            const response = await fetch('http://localhost:3000/projects', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const projects = await response.json();
+                
+                // Extrair todas as entregas dos projetos do usuário
+                const allDeliveries = projects.flatMap(p =>
+                    p.deliveries.map(d => ({ 
+                        ...d, 
+                        projectTitle: p.title, 
+                        projectId: p.id 
+                    }))
+                );
+                
+                setDeliveries(allDeliveries);
+            }
+        } catch (error) {
+            console.error('Erro ao buscar entregas:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="animate-fade-in">
+                <div style={{ textAlign: 'center', padding: '4rem' }}>
+                    <p className="text-muted">Carregando entregas...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="animate-fade-in">
@@ -27,7 +69,7 @@ const Deliveries = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {allDeliveries.map((delivery) => (
+                        {deliveries.map((delivery) => (
                             <tr key={delivery.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background-color 0.2s' }}>
                                 <td style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                     <div style={{ padding: '0.5rem', backgroundColor: 'var(--color-bg)', borderRadius: '0.5rem' }}>
@@ -45,7 +87,7 @@ const Deliveries = () => {
                                 </td>
                             </tr>
                         ))}
-                        {allDeliveries.length === 0 && (
+                        {deliveries.length === 0 && (
                             <tr>
                                 <td colSpan="5" style={{ padding: '4rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                                     Nenhuma entrega encontrada.
