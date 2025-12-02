@@ -8,12 +8,16 @@ const Projects = () => {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('Todos');
     const [searchTerm, setSearchTerm] = useState('');
-    const { token } = useAuth();
+    const { token, user } = useAuth(); // Adicione user aqui
 
-    // Buscar projetos da API
+    // Adicione debug no useEffect
     useEffect(() => {
+        console.log('=== DEBUG USER ===');
+        console.log('User:', user);
+        console.log('User role:', user?.role);
+        console.log('Is teacher:', user?.role === 'TEACHER');
         fetchProjects();
-    }, [token]);
+    }, [token, user]);
 
     const fetchProjects = async () => {
         try {
@@ -25,6 +29,10 @@ const Projects = () => {
 
             if (response.ok) {
                 const data = await response.json();
+                console.log('=== DEBUG PROJECTS ===');
+                console.log('Projects received:', data.length);
+                console.log('First project:', data[0]);
+                console.log('First project student:', data[0]?.student);
                 setProjects(data);
             }
         } catch (error) {
@@ -162,119 +170,139 @@ const Projects = () => {
                         <p className="text-muted">Carregando projetos...</p>
                     </div>
                 ) : (
-                    filteredProjects.map(project => (
-                        <div key={project.id} style={{ position: 'relative' }}>
-                            <Link
-                                to={`/projects/${project.id}`}
-                                className="card"
-                                style={{
-                                    cursor: 'pointer',
-                                    textDecoration: 'none',
-                                    color: 'inherit',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    height: '100%'
-                                }}
-                            >
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '1rem',
-                                    marginBottom: '1.5rem',
-                                    paddingBottom: '1.5rem',
-                                    borderBottom: '1px solid var(--color-border)'
-                                }}>
+                    filteredProjects.map(project => {
+                        console.log('=== DEBUG PROJECT CARD ===');
+                        console.log('Project:', project.title);
+                        console.log('Project student:', project.student);
+                        console.log('User role check:', user?.role === 'TEACHER');
+                        
+                        return (
+                            <div key={project.id} style={{ position: 'relative' }}>
+                                <Link
+                                    to={`/projects/${project.id}`}
+                                    className="card"
+                                    style={{
+                                        cursor: 'pointer',
+                                        textDecoration: 'none',
+                                        color: 'inherit',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        height: '100%'
+                                    }}
+                                >
                                     <div style={{
-                                        padding: '0.75rem',
-                                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                                        borderRadius: '0.75rem',
-                                        color: 'var(--color-primary)'
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '1rem',
+                                        marginBottom: '1.5rem',
+                                        paddingBottom: '1.5rem',
+                                        borderBottom: '1px solid var(--color-border)'
                                     }}>
-                                        <FolderKanban size={24} />
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{project.title}</h3>
-                                    </div>
-                                </div>
-
-                                <p className="text-muted" style={{ marginBottom: '1.5rem', flex: 1 }}>
-                                    {project.description}
-                                </p>
-
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
-                                    <span className={`badge ${getStatusColor(mapStatus(project.status))}`}>
-                                        {mapStatus(project.status)}
-                                    </span>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <span className="text-sm text-muted">Prazo: {project.deadline}</span>
-                                        <ArrowRight size={18} color="var(--color-primary)" />
-                                    </div>
-                                </div>
-
-                                {/* Progress Bar */}
-                                <div style={{ marginTop: '1.5rem' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                        <span className="text-sm text-muted">Progresso</span>
-                                        <span className="text-sm text-muted">{project.progress || 0}%</span>
-                                    </div>
-                                    <div style={{ width: '100%', height: '6px', backgroundColor: 'var(--color-bg)', borderRadius: '3px', overflow: 'hidden' }}>
                                         <div style={{
-                                            width: `${project.progress || 0}%`,
-                                            height: '100%',
-                                            background: 'linear-gradient(90deg, var(--color-primary), #ec4899)',
-                                            borderRadius: '3px',
-                                            transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
-                                        }}></div>
+                                            padding: '0.75rem',
+                                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                                            borderRadius: '0.75rem',
+                                            color: 'var(--color-primary)'
+                                        }}>
+                                            <FolderKanban size={24} />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{project.title}</h3>
+                                            {/* Mostrar informações do estudante apenas para professores */}
+                                            {user?.role === 'TEACHER' && project.student && (
+                                                <div style={{ marginTop: '0.5rem' }}>
+                                                    <p className="text-sm text-muted" style={{ margin: 0 }}>
+                                                        👤 {project.student.name}
+                                                    </p>
+                                                    <p className="text-sm text-muted" style={{ margin: 0 }}>
+                                                        📧 {project.student.email}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            </Link>
 
-                            {/* Botões de ação */}
-                            <div style={{
-                                position: 'absolute',
-                                top: '1rem',
-                                right: '1rem',
-                                display: 'flex',
-                                gap: '0.5rem'
-                            }}>
-                                <button
-                                    onClick={(e) => handleEdit(project, e)}
-                                    className="btn btn-outline"
-                                    style={{
-                                        padding: '0.5rem',
-                                        borderRadius: '50%',
-                                        width: '36px',
-                                        height: '36px',
+                                    <p className="text-muted" style={{ marginBottom: '1.5rem', flex: 1 }}>
+                                        {project.description}
+                                    </p>
+
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+                                        <span className={`badge ${getStatusColor(mapStatus(project.status))}`}>
+                                            {mapStatus(project.status)}
+                                        </span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <span className="text-sm text-muted">Prazo: {project.deadline}</span>
+                                            <ArrowRight size={18} color="var(--color-primary)" />
+                                        </div>
+                                    </div>
+
+                                    {/* Progress Bar */}
+                                    <div style={{ marginTop: '1.5rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                            <span className="text-sm text-muted">Progresso</span>
+                                            <span className="text-sm text-muted">{project.progress || 0}%</span>
+                                        </div>
+                                        <div style={{ width: '100%', height: '6px', backgroundColor: 'var(--color-bg)', borderRadius: '3px', overflow: 'hidden' }}>
+                                            <div style={{
+                                                width: `${project.progress || 0}%`,
+                                                height: '100%',
+                                                background: 'linear-gradient(90deg, var(--color-primary), #ec4899)',
+                                                borderRadius: '3px',
+                                                transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
+                                            }}></div>
+                                        </div>
+                                    </div>
+                                </Link>
+
+                                {/* Botões de ação - só mostrar para alunos (donos do projeto) ou professores */}
+                                {(user?.role === 'STUDENT' && project.studentId === user.id) || user?.role === 'TEACHER' ? (
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: '1rem',
+                                        right: '1rem',
                                         display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center'
-                                    }}
-                                    title="Editar projeto"
-                                >
-                                    <Edit size={16} />
-                                </button>
-                                <button
-                                    onClick={(e) => handleDelete(project.id, e)}
-                                    className="btn"
-                                    style={{
-                                        padding: '0.5rem',
-                                        borderRadius: '50%',
-                                        width: '36px',
-                                        height: '36px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        backgroundColor: 'var(--color-danger)',
-                                        borderColor: 'var(--color-danger)',
-                                        color: 'white'
-                                    }}
-                                    title="Deletar projeto"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
+                                        gap: '0.5rem'
+                                    }}>
+                                        <button
+                                            onClick={(e) => handleEdit(project, e)}
+                                            className="btn btn-outline"
+                                            style={{
+                                                padding: '0.5rem',
+                                                borderRadius: '50%',
+                                                width: '36px',
+                                                height: '36px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}
+                                            title="Editar projeto"
+                                        >
+                                            <Edit size={16} />
+                                        </button>
+                                        <button
+                                            onClick={(e) => handleDelete(project.id, e)}
+                                            className="btn"
+                                            style={{
+                                                padding: '0.5rem',
+                                                borderRadius: '50%',
+                                                width: '36px',
+                                                height: '36px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                backgroundColor: 'var(--color-danger)',
+                                                borderColor: 'var(--color-danger)',
+                                                color: 'white'
+                                            }}
+                                            title="Deletar projeto"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                ) : null}
                             </div>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
             </div>
 
