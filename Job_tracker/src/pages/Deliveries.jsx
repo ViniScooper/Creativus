@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { File, Download, ExternalLink } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -6,6 +7,7 @@ const Deliveries = () => {
     const [deliveries, setDeliveries] = useState([]);
     const [loading, setLoading] = useState(true);
     const { token, user } = useAuth();
+    const navigate = useNavigate();
 
     useEffect(() => {
         fetchDeliveries();
@@ -40,6 +42,11 @@ const Deliveries = () => {
         }
     };
 
+    const handleNewDelivery = () => {
+        // Redirecionar para a página de projetos
+        navigate('/projects');
+    };
+
     if (loading) {
         return (
             <div className="animate-fade-in">
@@ -54,7 +61,12 @@ const Deliveries = () => {
         <div className="animate-fade-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
                 <h1>Minhas Entregas</h1>
-                <button className="btn btn-primary">Nova Entrega</button>
+                <button 
+                    className="btn btn-primary"
+                    onClick={handleNewDelivery}
+                >
+                    Nova Entrega
+                </button>
             </div>
 
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
