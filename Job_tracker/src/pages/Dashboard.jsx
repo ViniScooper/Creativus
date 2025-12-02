@@ -94,7 +94,7 @@ const Dashboard = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                             <p className="text-muted text-sm">Em Andamento</p>
-                            <h3>{projects.filter(p => p.status !== 'Finalização').length}</h3>
+                            <h3>{projects.filter(p => p.status !== 'FINALIZATION').length}</h3>
                         </div>
                         <div style={{ padding: '0.75rem', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: '1rem', color: 'var(--color-warning)' }}>
                             <Clock size={24} />
@@ -105,7 +105,7 @@ const Dashboard = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                             <p className="text-muted text-sm">Concluídos</p>
-                            <h3>{projects.filter(p => p.status === 'Finalização').length}</h3>
+                            <h3>{projects.filter(p => p.status === 'FINALIZATION').length}</h3>
                         </div>
                         <div style={{ padding: '0.75rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderRadius: '1rem', color: 'var(--color-success)' }}>
                             <CheckCircle size={24} />

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 
-const NewProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
+const NewProjectModal = ({ isOpen, onClose, onProjectCreated, project = null }) => {
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -10,6 +10,28 @@ const NewProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    React.useEffect(() => {
+        if (project) {
+            // Converter data DD/MM/YYYY para YYYY-MM-DD para o input date
+            const [day, month, year] = project.deadline.split('/');
+            const formattedDate = `${year}-${month}-${day}`;
+
+            setFormData({
+                title: project.title,
+                description: project.description,
+                briefing: project.briefing,
+                deadline: formattedDate
+            });
+        } else {
+            setFormData({
+                title: '',
+                description: '',
+                briefing: '',
+                deadline: ''
+            });
+        }
+    }, [project, isOpen]);
 
     const handleChange = (e) => {
         setFormData({
@@ -30,8 +52,14 @@ const NewProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
             const [year, month, day] = formData.deadline.split('-');
             const formattedDeadline = `${day}/${month}/${year}`;
 
-            const response = await fetch('http://localhost:3000/projects', {
-                method: 'POST',
+            const url = project
+                ? `http://localhost:3000/projects/${project.id}`
+                : 'http://localhost:3000/projects';
+
+            const method = project ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
@@ -45,16 +73,18 @@ const NewProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || 'Erro ao criar projeto');
+                throw new Error(data.error || `Erro ao ${project ? 'atualizar' : 'criar'} projeto`);
             }
 
             // Reset form
-            setFormData({
-                title: '',
-                description: '',
-                briefing: '',
-                deadline: ''
-            });
+            if (!project) {
+                setFormData({
+                    title: '',
+                    description: '',
+                    briefing: '',
+                    deadline: ''
+                });
+            }
 
             // Notify parent
             if (onProjectCreated) {
@@ -99,7 +129,7 @@ const NewProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
                     alignItems: 'center',
                     marginBottom: '2rem'
                 }}>
-                    <h2 style={{ margin: 0 }}>Novo Projeto</h2>
+                    <h2 style={{ margin: 0 }}>{project ? 'Editar Projeto' : 'Novo Projeto'}</h2>
                     <button
                         onClick={onClose}
                         style={{
@@ -218,7 +248,7 @@ const NewProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
                             disabled={loading}
                             style={{ opacity: loading ? 0.6 : 1 }}
                         >
-                            {loading ? 'Criando...' : 'Criar Projeto'}
+                            {loading ? (project ? 'Salvando...' : 'Criando...') : (project ? 'Salvar Alterações' : 'Criar Projeto')}
                         </button>
                     </div>
                 </form>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { CheckCircle, Upload, MessageSquare, FileText, ChevronRight, ArrowLeft, Link, File } from 'lucide-react';
+import updateProjectProgress from '../utils/projectProgress';
 
 const ProjectDetails = () => {
     const { id } = useParams();
@@ -77,6 +78,7 @@ const ProjectDetails = () => {
         console.log('=== NOVA ENTREGA CRIADA ===');
         setRefreshKey(prev => prev + 1); // Forçar re-render
         fetchProject(); // Recarregar projeto
+        updateProjectProgress(id, token); // Atualizar progresso automaticamente
     };
 
     const handleReplyToFeedback = (feedbackId) => {
@@ -109,6 +111,7 @@ const ProjectDetails = () => {
                 setReplyingToFeedback(null);
                 setReplyContent('');
                 setRefreshKey(prev => prev + 1); // Recarregar projeto para mostrar a nova resposta
+                updateProjectProgress(id, token); // Atualizar progresso
             } else {
                 const errorData = await response.json();
                 alert(`Erro ao enviar resposta: ${errorData.error}`);
@@ -118,6 +121,37 @@ const ProjectDetails = () => {
             alert('Erro ao enviar resposta. Tente novamente.');
         } finally {
             setFeedbackLoading(false);
+        }
+    };
+
+    const handleCompleteProject = async () => {
+        if (!confirm('Tem certeza que deseja concluir este projeto? Esta ação não pode ser desfeita.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`http://localhost:3000/projects/${project.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    status: 'FINALIZATION',
+                    progress: 100
+                })
+            });
+
+            if (response.ok) {
+                alert('Projeto concluído com sucesso!');
+                fetchProject();
+            } else {
+                const errorData = await response.json();
+                alert(`Erro ao concluir projeto: ${errorData.error}`);
+            }
+        } catch (error) {
+            console.error('Erro ao concluir projeto:', error);
+            alert('Erro ao concluir projeto. Tente novamente.');
         }
     };
 
@@ -147,6 +181,7 @@ const ProjectDetails = () => {
                 alert('Comentário enviado com sucesso!');
                 setGeneralFeedback('');
                 setRefreshKey(prev => prev + 1); // Recarregar projeto
+                updateProjectProgress(id, token); // Atualizar progresso
             } else {
                 const errorData = await response.json();
                 alert(`Erro ao enviar comentário: ${errorData.error}`);
@@ -428,7 +463,11 @@ const ProjectDetails = () => {
                             <p className="text-muted" style={{ marginBottom: '2rem', maxWidth: '400px', margin: '0 auto 2rem auto' }}>
                                 Certifique-se de que todos os arquivos estão finais e aprovados antes de concluir o projeto.
                             </p>
-                            <button className="btn btn-primary" style={{ background: 'var(--color-success)', borderColor: 'var(--color-success)' }}>
+                            <button
+                                className="btn btn-primary"
+                                style={{ background: 'var(--color-success)', borderColor: 'var(--color-success)' }}
+                                onClick={handleCompleteProject}
+                            >
                                 Concluir Projeto
                             </button>
                         </div>
@@ -967,13 +1006,13 @@ const DeliveryForm = ({ projectId, onClose, onSuccess }) => {
             ) : (
                 <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                        Link
+                        Link da Entrega
                     </label>
                     <input
                         type="url"
                         value={link}
                         onChange={(e) => setLink(e.target.value)}
-                        placeholder="https://exemplo.com"
+                        placeholder="https://exemplo.com/meu-projeto"
                         required
                         style={{ marginBottom: 0 }}
                     />
@@ -983,12 +1022,12 @@ const DeliveryForm = ({ projectId, onClose, onSuccess }) => {
             {/* Comentários */}
             <div style={{ marginBottom: '2rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                    Comentários (opcional)
+                    Comentários
                 </label>
                 <textarea
                     value={comments}
                     onChange={(e) => setComments(e.target.value)}
-                    placeholder="Descreva sua entrega..."
+                    placeholder="Descreva o que foi feito nesta entrega..."
                     rows="3"
                     style={{ marginBottom: 0 }}
                 />

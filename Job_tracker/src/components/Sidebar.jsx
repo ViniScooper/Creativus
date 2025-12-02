@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FolderKanban, Send, MessageSquare, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, Send, MessageSquare, Settings, LogOut, User } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Sidebar = () => {
@@ -17,8 +17,12 @@ const Sidebar = () => {
         { path: '/projects', icon: FolderKanban, label: 'Projetos' },
         { path: '/deliveries', icon: Send, label: 'Entregas' },
         { path: '/feedback', icon: MessageSquare, label: 'Feedback' },
-        { path: '/admin', icon: Settings, label: 'Admin' },
+        { path: '/profile', icon: User, label: 'Perfil' },
     ];
+
+    if (user?.role === 'TEACHER') {
+        navItems.push({ path: '/admin', icon: Settings, label: 'Admin' });
+    }
 
     return (
         <aside className="sidebar">

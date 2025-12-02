@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FolderKanban, ArrowRight, Search, Edit, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import NewProjectModal from '../components/NewProjectModal';
 
 const Projects = () => {
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('Todos');
     const [searchTerm, setSearchTerm] = useState('');
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingProject, setEditingProject] = useState(null);
     const { token, user } = useAuth(); // Adicione user aqui
 
     // Adicione debug no useEffect
@@ -72,22 +75,22 @@ const Projects = () => {
 
     const handleDelete = async (projectId, e) => {
         e.preventDefault();
-        
+
         console.log('=== DEBUG DELETE ===');
         console.log('Project ID:', projectId);
         console.log('Type:', typeof projectId);
-        
+
         const token = localStorage.getItem('token');
         console.log('Token exists:', !!token);
         console.log('Token preview:', token ? token.substring(0, 20) + '...' : 'null');
-        
+
         if (!token) {
             alert('Token não encontrado. Faça login novamente.');
             return;
         }
-        
+
         if (!confirm('Deletar projeto?')) return;
-        
+
         try {
             const response = await fetch(`http://localhost:3000/projects/${projectId}`, {
                 method: 'DELETE',
@@ -96,10 +99,10 @@ const Projects = () => {
                     'Content-Type': 'application/json'
                 }
             });
-            
+
             console.log('Response status:', response.status);
             console.log('Response ok:', response.ok);
-            
+
             if (response.ok) {
                 setProjects(projects.filter(p => p.id !== projectId));
                 alert('Deletado com sucesso!');
@@ -112,6 +115,24 @@ const Projects = () => {
             console.error('Network error:', error);
             alert('Erro de conexão: ' + error.message);
         }
+    };
+
+    const handleEdit = (project, e) => {
+        e.preventDefault();
+        e.stopPropagation(); // Evitar navegação ao clicar no botão
+        setEditingProject(project);
+        setIsModalOpen(true);
+    };
+
+    const handleProjectSaved = (savedProject) => {
+        // Atualizar lista de projetos
+        if (editingProject) {
+            setProjects(projects.map(p => p.id === savedProject.id ? savedProject : p));
+        } else {
+            setProjects([savedProject, ...projects]);
+        }
+        setIsModalOpen(false);
+        setEditingProject(null);
     };
 
     return (
@@ -175,7 +196,7 @@ const Projects = () => {
                         console.log('Project:', project.title);
                         console.log('Project student:', project.student);
                         console.log('User role check:', user?.role === 'TEACHER');
-                        
+
                         return (
                             <div key={project.id} style={{ position: 'relative' }}>
                                 <Link
@@ -312,6 +333,16 @@ const Projects = () => {
                     <p className="text-muted">Nenhum projeto encontrado com estes critérios.</p>
                 </div>
             )}
+
+            <NewProjectModal
+                isOpen={isModalOpen}
+                onClose={() => {
+                    setIsModalOpen(false);
+                    setEditingProject(null);
+                }}
+                onProjectCreated={handleProjectSaved}
+                project={editingProject}
+            />
         </div>
     );
 };

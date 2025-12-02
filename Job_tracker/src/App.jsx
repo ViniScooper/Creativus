@@ -10,33 +10,39 @@ import ProjectDetails from './pages/ProjectDetails';
 import Deliveries from './pages/Deliveries';
 import Feedback from './pages/Feedback';
 import Admin from './pages/Admin';
+import Profile from './pages/Profile';
+
+import { ToastProvider } from './contexts/ToastContext';
 
 function App() {
     return (
         <AuthProvider>
-            <BrowserRouter>
-                <Routes>
-                    {/* Rota pública */}
-                    <Route path="/login" element={<Login />} />
+            <ToastProvider>
+                <BrowserRouter>
+                    <Routes>
+                        {/* Rota pública */}
+                        <Route path="/login" element={<Login />} />
 
-                    {/* Rotas protegidas */}
-                    <Route path="/" element={
-                        <ProtectedRoute>
-                            <MainLayout />
-                        </ProtectedRoute>
-                    }>
-                        <Route index element={<Dashboard />} />
-                        <Route path="projects" element={<Projects />} />
-                        <Route path="projects/:id" element={<ProjectDetails />} />
-                        <Route path="deliveries" element={<Deliveries />} />
-                        <Route path="feedback" element={<Feedback />} />
-                        <Route path="admin" element={<Admin />} />
-                    </Route>
+                        {/* Rotas protegidas */}
+                        <Route path="/" element={
+                            <ProtectedRoute>
+                                <MainLayout />
+                            </ProtectedRoute>
+                        }>
+                            <Route index element={<Dashboard />} />
+                            <Route path="projects" element={<Projects />} />
+                            <Route path="projects/:id" element={<ProjectDetails />} />
+                            <Route path="deliveries" element={<Deliveries />} />
+                            <Route path="feedback" element={<Feedback />} />
+                            <Route path="admin" element={<Admin />} />
+                            <Route path="profile" element={<Profile />} />
+                        </Route>
 
-                    {/* Redirecionar qualquer outra rota para home */}
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-            </BrowserRouter>
+                        {/* Redirecionar qualquer outra rota para home */}
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                </BrowserRouter>
+            </ToastProvider>
         </AuthProvider>
     );
 }

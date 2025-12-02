@@ -298,6 +298,15 @@ app.put('/projects/:id', authenticateToken, async (req, res) => {
     try {
         const { status, progress } = req.body;
 
+        // Validar campos permitidos
+        const allowedFields = ['status', 'progress'];
+        const receivedFields = Object.keys(req.body);
+        const invalidFields = receivedFields.filter(field => !allowedFields.includes(field));
+
+        if (invalidFields.length > 0) {
+            return res.status(400).json({ error: `Campos não permitidos: ${invalidFields.join(', ')}` });
+        }
+
         const project = await prisma.project.findUnique({
             where: { id: req.params.id }
         });
@@ -309,6 +318,11 @@ app.put('/projects/:id', authenticateToken, async (req, res) => {
         // Verificar permissão
         if (req.user.role === 'STUDENT' && project.studentId !== req.user.id) {
             return res.status(403).json({ error: 'Sem permissão' });
+        }
+
+        // Apenas professor ou dono podem concluir projeto
+        if (status === 'FINALIZATION' && req.user.role === 'STUDENT') {
+            return res.status(403).json({ error: 'Apenas professores podem concluir projetos' });
         }
 
         const updatedProject = await prisma.project.update({
@@ -462,6 +476,77 @@ app.post('/feedback/:id/reply', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Erro ao responder feedback:', error);
         return res.status(500).json({ error: 'Erro ao responder feedback' });
+    }
+});
+
+// ==================== PERFIL ====================
+
+// Atualizar perfil do usuário
+app.put('/profile', authenticateToken, async (req, res) => {
+    try {
+        const { name, email } = req.body;
+
+        // Verificar se email já está em uso por outro usuário
+        if (email && email !== req.user.email) {
+            const existingUser = await prisma.user.findUnique({
+                where: { email }
+            });
+
+            if (existingUser) {
+                return res.status(400).json({ error: 'Email já está em uso' });
+            }
+        }
+
+        const updatedUser = await prisma.user.update({
+            where: { id: req.user.id },
+            data: {
+                name: name || undefined,
+                email: email || undefined
+            },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true
+            }
+        });
+
+        return res.status(200).json(updatedUser);
+    } catch (error) {
+        console.error('Erro ao atualizar perfil:', error);
+        return res.status(500).json({ error: 'Erro ao atualizar perfil' });
+    }
+});
+
+// Alterar senha
+app.put('/profile/password', authenticateToken, async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+
+        // Buscar usuário com senha
+        const user = await prisma.user.findUnique({
+            where: { id: req.user.id }
+        });
+
+        // Verificar senha atual
+        const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+        if (!isPasswordValid) {
+            return res.status(400).json({ error: 'Senha atual incorreta' });
+        }
+
+        // Hash da nova senha
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // Atualizar senha
+        await prisma.user.update({
+            where: { id: req.user.id },
+            data: { password: hashedPassword }
+        });
+
+        return res.status(200).json({ message: 'Senha alterada com sucesso' });
+    } catch (error) {
+        console.error('Erro ao alterar senha:', error);
+        return res.status(500).json({ error: 'Erro ao alterar senha' });
     }
 });
 
