@@ -28,22 +28,27 @@ const updateProjectProgress = async (projectId, token) => {
         let newProgress = 0;
         let newStatus = projectData.status;
 
-        if (briefingDocs.length > 0) {
-            newProgress = 25;
-            if (newStatus === 'BRIEFING') {
-                newStatus = 'PROTOTYPE';
+        // Se já está finalizado, progresso é 100%
+        if (projectData.status === 'FINALIZATION') {
+            newProgress = 100;
+        } else {
+            if (briefingDocs.length > 0) {
+                newProgress = 25;
+                if (newStatus === 'BRIEFING') {
+                    newStatus = 'PROTOTYPE';
+                }
             }
-        }
 
-        if (prototypeDocs.length > 0) {
-            newProgress = 50;
-            if (newStatus === 'PROTOTYPE') {
-                newStatus = 'REVIEW';
+            if (prototypeDocs.length > 0) {
+                newProgress = 50;
+                if (newStatus === 'PROTOTYPE') {
+                    newStatus = 'REVIEW';
+                }
             }
-        }
 
-        if (feedbackCount > 0) {
-            newProgress = 75;
+            if (feedbackCount > 0) {
+                newProgress = 75;
+            }
         }
 
         // Atualizar apenas se houver mudança

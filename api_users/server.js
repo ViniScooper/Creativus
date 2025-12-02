@@ -209,6 +209,17 @@ app.get('/projects', authenticateToken, async (req, res) => {
             });
         }
 
+        // Garantir que todos os projetos finalizados tenham progresso 100%
+        for (let i = 0; i < projects.length; i++) {
+            if (projects[i].status === 'FINALIZATION' && projects[i].progress !== 100) {
+                await prisma.project.update({
+                    where: { id: projects[i].id },
+                    data: { progress: 100 }
+                });
+                projects[i].progress = 100;
+            }
+        }
+
         return res.status(200).json(projects);
     } catch (error) {
         console.error('Erro ao buscar projetos:', error);
@@ -247,7 +258,8 @@ app.get('/projects/:id', authenticateToken, async (req, res) => {
                         }
                     },
                     orderBy: { createdAt: 'desc' }
-                }
+                },
+                checklist: true
             }
         });
 
@@ -258,6 +270,47 @@ app.get('/projects/:id', authenticateToken, async (req, res) => {
         // Verificar permissão
         if (req.user.role === 'STUDENT' && project.studentId !== req.user.id) {
             return res.status(403).json({ error: 'Sem permissão para acessar este projeto' });
+        }
+
+        // Garantir que projetos finalizados sempre tenham progresso 100%
+        if (project.status === 'FINALIZATION' && project.progress !== 100) {
+            project = await prisma.project.update({
+                where: { id: req.params.id },
+                data: { progress: 100 }
+            });
+            // Recarregar com includes
+            project = await prisma.project.findUnique({
+                where: { id: req.params.id },
+                include: {
+                    student: {
+                        select: { id: true, name: true, email: true }
+                    },
+                    deliveries: {
+                        include: {
+                            user: {
+                                select: { name: true }
+                            }
+                        }
+                    },
+                    feedbacks: {
+                        include: {
+                            author: {
+                                select: { name: true, role: true }
+                            },
+                            replies: {
+                                include: {
+                                    author: {
+                                        select: { name: true, role: true }
+                                    }
+                                },
+                                orderBy: { createdAt: 'asc' }
+                            }
+                        },
+                        orderBy: { createdAt: 'desc' }
+                    },
+                    checklist: true
+                }
+            });
         }
 
         return res.status(200).json(project);
@@ -325,6 +378,11 @@ app.put('/projects/:id', authenticateToken, async (req, res) => {
             return res.status(403).json({ error: 'Apenas professores podem concluir projetos' });
         }
 
+        // Trava updates em projetos FINALIZATION em endpoints gerais de edição
+        if (project.status === 'FINALIZATION') {
+            return res.status(400).json({ error: 'Projeto já está finalizado e não pode mais ser alterado.' });
+        }
+
         const updatedProject = await prisma.project.update({
             where: { id: req.params.id },
             data: {
@@ -337,6 +395,123 @@ app.put('/projects/:id', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Erro ao atualizar projeto:', error);
         return res.status(500).json({ error: 'Erro ao atualizar projeto' });
+    }
+});
+
+// 1. Endpoint para aluno solicitar aprovação (status: REVIEW)
+app.put('/projects/:id/request-approval', authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== 'STUDENT') {
+            return res.status(403).json({ error: 'Apenas alunos podem solicitar aprovação.' });
+        }
+        const project = await prisma.project.findUnique({ where: { id: req.params.id } });
+        if (!project || project.studentId !== req.user.id) {
+            return res.status(403).json({ error: 'Sem permissão para este projeto.' });
+        }
+        if (project.status === 'FINALIZATION') {
+            return res.status(400).json({ error: 'Projeto já está finalizado.' });
+        }
+        // Muda status para REVIEW sempre (pode solicitar quantas vezes necessário)
+        const updated = await prisma.project.update({
+            where: { id: req.params.id },
+            data: { status: 'REVIEW' }
+        });
+        res.json(updated);
+    } catch (err) {
+        console.error('Erro ao solicitar aprovação:', err);
+        res.status(500).json({ error: 'Erro ao solicitar aprovação.' });
+    }
+});
+
+// 2. Novo endpoint para painel admin: projetos em REVIEW
+app.get('/admin/review-projects', authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== 'TEACHER') {
+            return res.status(403).json({ error: 'Apenas professores podem visualizar esta tela' });
+        }
+        const projects = await prisma.project.findMany({
+            where: { status: 'REVIEW' },
+            include: {
+                student: { select: { id: true, name: true, email: true } },
+                deliveries: true,
+                feedbacks: true,
+                checklist: true
+            },
+            orderBy: { deadline: 'asc' }
+        });
+        res.json(projects);
+    } catch (err) {
+        res.status(500).json({ error: 'Erro ao buscar projetos em revisão.' });
+    }
+});
+
+// 3. Avaliação + aprovação final pelo professor (muda status para FINALIZATION)
+app.put('/projects/:id/evaluate', authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== 'TEACHER') {
+            return res.status(403).json({ error: 'Apenas professores podem avaliar projetos.' });
+        }
+        const { grade, checklist } = req.body;
+        const project = await prisma.project.findUnique({ where: { id: req.params.id } });
+        if (!project) return res.status(404).json({ error: 'Projeto não encontrado.' });
+        // Bloqueia caso já finalizado
+        if (project.status === 'FINALIZATION') {
+            return res.status(400).json({ error: 'Projeto já está finalizado.' });
+        }
+        // Só pode aprovar se estiver em REVIEW
+        if (project.status !== 'REVIEW') {
+            return res.status(400).json({ error: 'Projeto precisa estar em análise (REVIEW) para aprovação.' });
+        }
+        // Atualizar nota, checklist, status e progresso para 100%
+        const updatedProject = await prisma.project.update({
+            where: { id: req.params.id },
+            data: { 
+                grade: grade, 
+                status: 'FINALIZATION',
+                progress: 100
+            }
+        });
+        // Atualizar/Adicionar itens de checklist
+        if (Array.isArray(checklist)) {
+            for (const item of checklist) {
+                if (item.id) {
+                    await prisma.checklist.update({ where: { id: item.id }, data: { title: item.title, isDone: item.isDone } });
+                } else {
+                    await prisma.checklist.create({ data: { projectId: req.params.id, title: item.title, isDone: !!item.isDone } });
+                }
+            }
+        }
+        return res.json({ message: 'Projeto avaliado e aprovado!', project: updatedProject });
+    } catch (err) {
+        res.status(500).json({ error: 'Erro ao avaliar projeto.' });
+    }
+});
+
+// Endpoint para professor ver todos projetos entregues no prazo
+app.get('/admin/project-on-time', authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== 'TEACHER') {
+            return res.status(403).json({ error: 'Apenas professores podem visualizar esta tela' });
+        }
+        // Considerar prazo simples (deadline > now ou FINALIZATION antes do deadline)
+        const now = new Date();
+        const projects = await prisma.project.findMany({
+            where: {
+                deadline: { gte: now.toISOString().split('T')[0] }, // deadline ainda não passou
+                status: 'FINALIZATION'    // projeto finalizado
+            },
+            include: {
+                student: { select: { id: true, name: true, email: true } },
+                deliveries: true,
+                feedbacks: true,
+                checklist: true
+            },
+            orderBy: { deadline: 'asc' }
+        });
+        res.json(projects);
+    } catch (err) {
+        console.error('Erro ao buscar projetos entregues no prazo:', err);
+        res.status(500).json({ error: 'Erro ao buscar projetos no prazo.' });
     }
 });
 
@@ -547,6 +722,35 @@ app.put('/profile/password', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Erro ao alterar senha:', error);
         return res.status(500).json({ error: 'Erro ao alterar senha' });
+    }
+});
+
+// ==================== UTILITÁRIOS ====================
+
+// Endpoint para corrigir progresso de projetos finalizados (temporário)
+app.put('/admin/fix-progress', authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== 'TEACHER') {
+            return res.status(403).json({ error: 'Apenas professores podem executar esta ação' });
+        }
+        
+        // Atualizar todos os projetos finalizados para progresso 100%
+        const result = await prisma.project.updateMany({
+            where: {
+                status: 'FINALIZATION',
+                progress: { lt: 100 }
+            },
+            data: {
+                progress: 100
+            }
+        });
+        
+        return res.json({ 
+            message: `${result.count} projeto(s) atualizado(s) para 100% de progresso.` 
+        });
+    } catch (err) {
+        console.error('Erro ao corrigir progresso:', err);
+        res.status(500).json({ error: 'Erro ao corrigir progresso.' });
     }
 });
 

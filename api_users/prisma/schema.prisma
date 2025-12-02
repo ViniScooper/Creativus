@@ -58,6 +58,19 @@ model Project {
   
   deliveries  Delivery[]
   feedbacks   Feedback[]
+
+  // Melhoria simples:
+  grade       Float?        // Nota do projeto (0 a 10)
+  checklist   Checklist[]   // Checklist simples do projeto
+}
+
+model Checklist {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  projectId   String   @db.ObjectId
+  project     Project  @relation(fields: [projectId], references: [id])
+
+  title       String   // "Item do checklist"
+  isDone      Boolean  @default(false)
 }
 
 model Delivery {

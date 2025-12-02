@@ -18,6 +18,10 @@ const Admin = () => {
     });
     const [recentProjects, setRecentProjects] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [projectsForApproval, setProjectsForApproval] = useState([]);
+    const [evaluatingProject, setEvaluatingProject] = useState(null);
+    const [gradeInput, setGradeInput] = useState(0);
+    const [checklistInput, setChecklistInput] = useState([]);
 
     useEffect(() => {
         // Verificar se é professor
@@ -64,6 +68,64 @@ const Admin = () => {
             error('Erro ao carregar dados do painel');
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Fetch projetos em REVIEW (prontos p/ aprovação)
+    const fetchProjectsForApproval = async () => {
+        try {
+            const res = await fetch('http://localhost:3000/admin/review-projects', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setProjectsForApproval(data);
+            }
+        } catch (err) {
+            console.error('Erro ao buscar projetos em revisão:', err);
+        }
+    };
+
+    useEffect(() => {
+        if (user?.role === 'TEACHER') {
+            fetchProjectsForApproval();
+        }
+    }, [user, token]);
+
+    const openEvaluate = (project) => {
+        setEvaluatingProject(project);
+        setGradeInput(project.grade || 0);
+        setChecklistInput(
+            project.checklist?.map(item => ({ ...item })) || [{ title: '', isDone: false }]
+        );
+    };
+
+    const handleChecklistChange = (idx, field, value) => {
+        setChecklistInput(
+            checklistInput.map((item, i) => i === idx ? { ...item, [field]: value } : item)
+        );
+    };
+
+    const handleAddChecklist = () => {
+        setChecklistInput([...checklistInput, { title: '', isDone: false }]);
+    };
+
+    const submitEvaluate = async (id) => {
+        try {
+            const res = await fetch(`http://localhost:3000/projects/${id}/evaluate`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ grade: gradeInput, checklist: checklistInput })
+            });
+            if (res.ok) {
+                fetchProjectsForApproval();
+                setEvaluatingProject(null);
+            }
+        } catch (err) {
+            console.error('Erro ao aprovar projeto:', err);
         }
     };
 
@@ -170,6 +232,65 @@ const Admin = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Painel: Projetos Prontos para Aprovação */}
+            {user.role === 'TEACHER' && (
+                <div className="card" style={{ marginBottom: '2.5rem' }}>
+                    <h3 style={{ marginBottom: '1.5rem' }}>Projetos Prontos para Aprovação</h3>
+                    {projectsForApproval.length > 0 ? (
+                        <div style={{ display: 'grid', gap: '1rem' }}>
+                            {projectsForApproval.map((project) => (
+                                <div key={project.id} className="card" style={{ border: '1px solid #ddd', borderRadius: 10, padding: '1rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div>
+                                            <h4>{project.title}</h4>
+                                            <p className="text-sm text-muted">Aluno: {project.student.name}</p>
+                                            <p className="text-sm text-muted">Prazo: {project.deadline}</p>
+                                            <p className="text-sm text-muted">Nota atual: {project.grade ?? '-'}</p>
+                                        </div>
+                                        <button className="btn btn-outline" onClick={() => openEvaluate(project)} style={{marginLeft:8}}>
+                                            Aprovar e Finalizar
+                                        </button>
+                                    </div>
+                                    {/* Exibir checklist atual */}
+                                    {project.checklist && project.checklist.length > 0 && (
+                                        <ul style={{marginTop:8}}>
+                                            {project.checklist.map(item => (
+                                                <li key={item.id}>{item.title} {item.isDone ? '✅' : '❌'}</li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div style={{ textAlign: 'center', color: '#888' }}>Nenhum projeto pronto para aprovação.</div>
+                    )}
+                    {/* Modal de avaliação */}
+                    {evaluatingProject && (
+                        <div className="modal" style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,.45)', display:'flex',alignItems:'center',justifyContent:'center'}}>
+                            <div className="card" style={{minWidth:320}}>
+                                <h4>Aprovar Projeto</h4>
+                                <p>Aluno: {evaluatingProject.student.name}</p>
+                                <label htmlFor="nota">Nota (0-10):</label>
+                                <input value={gradeInput} onChange={e=>setGradeInput(Number(e.target.value))} type="number" step="0.1" min="0" max="10" style={{width:'100%',marginBottom:12}}/>
+                                <label>Checklist:</label>
+                                {checklistInput.map((item, idx) => (
+                                    <div key={idx} style={{display:'flex', gap:4,marginBottom:4}}>
+                                        <input value={item.title} onChange={e=>handleChecklistChange(idx,'title',e.target.value)} placeholder="Título"/>
+                                        <input type="checkbox" checked={item.isDone} onChange={e=>handleChecklistChange(idx,'isDone',e.target.checked)} />
+                                    </div>
+                                ))}
+                                <button type="button" className="btn btn-secondary" onClick={handleAddChecklist}>Adicionar Item</button>
+                                <div style={{marginTop:16,display:'flex',gap:8}}>
+                                    <button className="btn btn-primary" onClick={()=>submitEvaluate(evaluatingProject.id)}>Salvar e Finalizar</button>
+                                    <button className="btn btn-outline" onClick={()=>setEvaluatingProject(null)}>Cancelar</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Projetos Recentes */}
             <div className="card">

@@ -446,31 +446,85 @@ const ProjectDetails = () => {
             case 'Finalização':
                 return (
                     <div className="animate-fade-in">
-                        <div className="card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-                            <div style={{
-                                width: '80px',
-                                height: '80px',
-                                backgroundColor: 'rgba(52, 211, 153, 0.1)',
-                                borderRadius: '50%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                margin: '0 auto 1.5rem auto'
-                            }}>
-                                <CheckCircle size={40} color="var(--color-success)" />
+                        {project.status === 'FINALIZATION' ? (
+                            // Projeto finalizado - mostrar nota e checklist
+                            <div className="card">
+                                <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                                    <div style={{
+                                        width: '80px',
+                                        height: '80px',
+                                        backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                                        borderRadius: '50%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        margin: '0 auto 1.5rem auto'
+                                    }}>
+                                        <CheckCircle size={40} color="var(--color-success)" />
+                                    </div>
+                                    <h3>Projeto Finalizado!</h3>
+                                </div>
+                                
+                                <div style={{ marginTop: '2rem' }}>
+                                    <h4 style={{ marginBottom: '1rem' }}>Nota Final: {project.grade ? `${project.grade}/10` : 'Aguardando avaliação'}</h4>
+                                    
+                                    {project.checklist && project.checklist.length > 0 ? (
+                                        <div>
+                                            <h5 style={{ marginBottom: '1rem' }}>Checklist de Avaliação:</h5>
+                                            <ul style={{ listStyle: 'none', padding: 0 }}>
+                                                {project.checklist.map(item => (
+                                                    <li key={item.id} style={{ 
+                                                        padding: '0.75rem', 
+                                                        marginBottom: '0.5rem', 
+                                                        backgroundColor: 'var(--color-bg-secondary)',
+                                                        borderRadius: '0.5rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '0.5rem'
+                                                    }}>
+                                                        <span>{item.isDone ? '✅' : '❌'}</span>
+                                                        <span>{item.title}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    ) : (
+                                        <p className="text-muted">Nenhum item de checklist foi preenchido pelo professor.</p>
+                                    )}
+                                </div>
                             </div>
-                            <h3>Pronto para Entrega?</h3>
-                            <p className="text-muted" style={{ marginBottom: '2rem', maxWidth: '400px', margin: '0 auto 2rem auto' }}>
-                                Certifique-se de que todos os arquivos estão finais e aprovados antes de concluir o projeto.
-                            </p>
-                            <button
-                                className="btn btn-primary"
-                                style={{ background: 'var(--color-success)', borderColor: 'var(--color-success)' }}
-                                onClick={handleCompleteProject}
-                            >
-                                Concluir Projeto
-                            </button>
-                        </div>
+                        ) : (
+                            // Projeto não finalizado - mostrar botão para solicitar aprovação (se for aluno)
+                            <div className="card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
+                                <div style={{
+                                    width: '80px',
+                                    height: '80px',
+                                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                                    borderRadius: '50%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    margin: '0 auto 1.5rem auto'
+                                }}>
+                                    <CheckCircle size={40} color="var(--color-primary)" />
+                                </div>
+                                <h3>Pronto para Entrega?</h3>
+                                <p className="text-muted" style={{ marginBottom: '2rem', maxWidth: '400px', margin: '0 auto 2rem auto' }}>
+                                    Certifique-se de que todos os arquivos estão finais e aprovados antes de solicitar a aprovação do professor.
+                                </p>
+                                {canRequestApproval && (
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={handleRequestApproval}
+                                    >
+                                        Solicitar Aprovação do Projeto
+                                    </button>
+                                )}
+                                {!canRequestApproval && user?.role === 'STUDENT' && (
+                                    <p className="text-muted">Você já solicitou aprovação. Aguarde a avaliação do professor.</p>
+                                )}
+                            </div>
+                        )}
                     </div>
                 );
             default:
@@ -501,6 +555,50 @@ const ProjectDetails = () => {
             console.error('Erro no download:', error);
             alert('Erro ao fazer download');
         }
+    };
+
+    // Marcar se projeto pode pedir aprovação
+    const canRequestApproval = (project.status !== 'FINALIZATION' && user.role === 'STUDENT' && project.studentId === user.id);
+
+    // Mostrar nota/checklist se finalizado
+    const renderGradeSection = () => {
+        if (project.status !== 'FINALIZATION') return null;
+        return (
+          <div className="card" style={{marginTop:16, marginBottom:16}}>
+            <h4>Nota Final: {project.grade ?? '-'}</h4>
+            <h5>Checklist:</h5>
+            {project.checklist && project.checklist.length > 0 ? (
+              <ul>
+                {project.checklist.map(item => (
+                  <li key={item.id}>{item.title} {item.isDone ? '✅' : '❌'}</li>
+                ))}
+              </ul>
+            ) : (
+              <p>Nenhum item marcado.</p>
+            )}
+          </div>
+        );
+    };
+
+    // Função para aluno solicitar aprovação
+    const handleRequestApproval = async () => {
+      try {
+        const response = await fetch(`http://localhost:3000/projects/${project.id}/request-approval`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (response.ok) {
+          setRefreshKey(prev => prev + 1);
+          alert('Solicitação de aprovação enviada ao professor!');
+        } else {
+          const errorData = await response.json();
+          alert(errorData.error);
+        }
+      } catch (err) {
+        alert('Erro ao solicitar aprovação');
+      }
     };
 
     return (
