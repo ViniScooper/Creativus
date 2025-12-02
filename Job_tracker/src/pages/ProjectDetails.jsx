@@ -130,8 +130,8 @@ const ProjectDetails = () => {
         setFeedbackLoading(true);
 
         try {
-            // Criar uma entrega especial para comentários gerais
-            const response = await fetch('http://localhost:3000/deliveries', {
+            // Criar um novo feedback (apenas professores)
+            const response = await fetch('http://localhost:3000/feedback', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -139,9 +139,7 @@ const ProjectDetails = () => {
                 },
                 body: JSON.stringify({
                     projectId: project.id,
-                    name: `Comentário geral: ${generalFeedback.substring(0, 50)}...`,
-                    comments: generalFeedback,
-                    fileUrl: null
+                    content: generalFeedback
                 })
             });
 
@@ -389,22 +387,24 @@ const ProjectDetails = () => {
                                 <p className="text-muted" style={{ marginTop: '1rem', textAlign: 'center', padding: '2rem' }}>Nenhum feedback recebido ainda.</p>
                             )}
 
-                            <div style={{ marginTop: '2rem' }}>
-                                <textarea
-                                    placeholder="Adicione seus comentários..."
-                                    rows="4"
-                                    value={generalFeedback}
-                                    onChange={(e) => setGeneralFeedback(e.target.value)}
-                                ></textarea>
-                                <button
-                                    className="btn btn-primary"
-                                    style={{ marginTop: '0.5rem' }}
-                                    onClick={handleSendGeneralFeedback}
-                                    disabled={feedbackLoading}
-                                >
-                                    {feedbackLoading ? 'Enviando...' : 'Enviar Feedback'}
-                                </button>
-                            </div>
+                            {user?.role === 'TEACHER' && (
+                                <div style={{ marginTop: '2rem' }}>
+                                    <textarea
+                                        placeholder="Adicione seus comentários..."
+                                        rows="4"
+                                        value={generalFeedback}
+                                        onChange={(e) => setGeneralFeedback(e.target.value)}
+                                    ></textarea>
+                                    <button
+                                        className="btn btn-primary"
+                                        style={{ marginTop: '0.5rem' }}
+                                        onClick={handleSendGeneralFeedback}
+                                        disabled={feedbackLoading}
+                                    >
+                                        {feedbackLoading ? 'Enviando...' : 'Enviar Feedback'}
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 );
