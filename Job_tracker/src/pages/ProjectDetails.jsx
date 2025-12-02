@@ -232,9 +232,9 @@ const ProjectDetails = () => {
                     <div className="animate-fade-in">
                         <div className="card">
                             <h3>Feedback & Comentários</h3>
-                            {project.feedback && project.feedback.length > 0 ? (
+                            {project.feedbacks && project.feedbacks.length > 0 ? (
                                 <div style={{ display: 'grid', gap: '1rem', marginTop: '1.5rem' }}>
-                                    {project.feedback.map(fb => (
+                                    {project.feedbacks.map(fb => (
                                         <div key={fb.id} style={{ padding: '1.5rem', backgroundColor: 'var(--color-bg)', borderRadius: '1rem', border: '1px solid var(--color-border)' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                                                 <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{fb.author.name}</span>
