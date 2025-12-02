@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FolderKanban, ArrowRight, Search } from 'lucide-react';
+import { FolderKanban, ArrowRight, Search, Edit, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Projects = () => {
@@ -62,6 +62,50 @@ const Projects = () => {
         }
     };
 
+    const handleDelete = async (projectId, e) => {
+        e.preventDefault();
+        
+        console.log('=== DEBUG DELETE ===');
+        console.log('Project ID:', projectId);
+        console.log('Type:', typeof projectId);
+        
+        const token = localStorage.getItem('token');
+        console.log('Token exists:', !!token);
+        console.log('Token preview:', token ? token.substring(0, 20) + '...' : 'null');
+        
+        if (!token) {
+            alert('Token não encontrado. Faça login novamente.');
+            return;
+        }
+        
+        if (!confirm('Deletar projeto?')) return;
+        
+        try {
+            const response = await fetch(`http://localhost:3000/projects/${projectId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            console.log('Response status:', response.status);
+            console.log('Response ok:', response.ok);
+            
+            if (response.ok) {
+                setProjects(projects.filter(p => p.id !== projectId));
+                alert('Deletado com sucesso!');
+            } else {
+                const error = await response.text();
+                console.log('Error response:', error);
+                alert(`Erro ${response.status}: ${error}`);
+            }
+        } catch (error) {
+            console.error('Network error:', error);
+            alert('Erro de conexão: ' + error.message);
+        }
+    };
+
     return (
         <div className="animate-fade-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
@@ -119,71 +163,117 @@ const Projects = () => {
                     </div>
                 ) : (
                     filteredProjects.map(project => (
-                        <Link
-                            key={project.id}
-                            to={`/projects/${project.id}`}
-                            className="card"
-                            style={{
-                                cursor: 'pointer',
-                                textDecoration: 'none',
-                                color: 'inherit',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                height: '100%'
-                            }}
-                        >
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '1rem',
-                                marginBottom: '1.5rem',
-                                paddingBottom: '1.5rem',
-                                borderBottom: '1px solid var(--color-border)'
-                            }}>
+                        <div key={project.id} style={{ position: 'relative' }}>
+                            <Link
+                                to={`/projects/${project.id}`}
+                                className="card"
+                                style={{
+                                    cursor: 'pointer',
+                                    textDecoration: 'none',
+                                    color: 'inherit',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    height: '100%'
+                                }}
+                            >
                                 <div style={{
-                                    padding: '0.75rem',
-                                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                                    borderRadius: '0.75rem',
-                                    color: 'var(--color-primary)'
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '1rem',
+                                    marginBottom: '1.5rem',
+                                    paddingBottom: '1.5rem',
+                                    borderBottom: '1px solid var(--color-border)'
                                 }}>
-                                    <FolderKanban size={24} />
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{project.title}</h3>
-                                </div>
-                            </div>
-
-                            <p className="text-muted" style={{ marginBottom: '1.5rem', flex: 1 }}>
-                                {project.description}
-                            </p>
-
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
-                                <span className={`badge ${getStatusColor(mapStatus(project.status))}`}>
-                                    {mapStatus(project.status)}
-                                </span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <span className="text-sm text-muted">Prazo: {project.deadline}</span>
-                                    <ArrowRight size={18} color="var(--color-primary)" />
-                                </div>
-                            </div>
-
-                            {/* Progress Bar */}
-                            <div style={{ marginTop: '1.5rem' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                    <span className="text-sm text-muted">Progresso</span>
-                                    <span className="text-sm text-muted">{project.progress || 0}%</span>
-                                </div>
-                                <div style={{ width: '100%', height: '6px', backgroundColor: 'var(--color-bg)', borderRadius: '3px', overflow: 'hidden' }}>
                                     <div style={{
-                                        width: `${project.progress || 0}%`,
-                                        height: '100%',
-                                        background: 'linear-gradient(90deg, var(--color-primary), #ec4899)',
-                                        borderRadius: '3px',
-                                        transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
-                                    }}></div>
+                                        padding: '0.75rem',
+                                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                                        borderRadius: '0.75rem',
+                                        color: 'var(--color-primary)'
+                                    }}>
+                                        <FolderKanban size={24} />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{project.title}</h3>
+                                    </div>
                                 </div>
+
+                                <p className="text-muted" style={{ marginBottom: '1.5rem', flex: 1 }}>
+                                    {project.description}
+                                </p>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+                                    <span className={`badge ${getStatusColor(mapStatus(project.status))}`}>
+                                        {mapStatus(project.status)}
+                                    </span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span className="text-sm text-muted">Prazo: {project.deadline}</span>
+                                        <ArrowRight size={18} color="var(--color-primary)" />
+                                    </div>
+                                </div>
+
+                                {/* Progress Bar */}
+                                <div style={{ marginTop: '1.5rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                        <span className="text-sm text-muted">Progresso</span>
+                                        <span className="text-sm text-muted">{project.progress || 0}%</span>
+                                    </div>
+                                    <div style={{ width: '100%', height: '6px', backgroundColor: 'var(--color-bg)', borderRadius: '3px', overflow: 'hidden' }}>
+                                        <div style={{
+                                            width: `${project.progress || 0}%`,
+                                            height: '100%',
+                                            background: 'linear-gradient(90deg, var(--color-primary), #ec4899)',
+                                            borderRadius: '3px',
+                                            transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
+                                        }}></div>
+                                    </div>
+                                </div>
+                            </Link>
+
+                            {/* Botões de ação */}
+                            <div style={{
+                                position: 'absolute',
+                                top: '1rem',
+                                right: '1rem',
+                                display: 'flex',
+                                gap: '0.5rem'
+                            }}>
+                                <button
+                                    onClick={(e) => handleEdit(project, e)}
+                                    className="btn btn-outline"
+                                    style={{
+                                        padding: '0.5rem',
+                                        borderRadius: '50%',
+                                        width: '36px',
+                                        height: '36px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}
+                                    title="Editar projeto"
+                                >
+                                    <Edit size={16} />
+                                </button>
+                                <button
+                                    onClick={(e) => handleDelete(project.id, e)}
+                                    className="btn"
+                                    style={{
+                                        padding: '0.5rem',
+                                        borderRadius: '50%',
+                                        width: '36px',
+                                        height: '36px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        backgroundColor: 'var(--color-danger)',
+                                        borderColor: 'var(--color-danger)',
+                                        color: 'white'
+                                    }}
+                                    title="Deletar projeto"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
                             </div>
-                        </Link>
+                        </div>
                     ))
                 )}
             </div>

@@ -302,6 +302,47 @@ app.put('/projects/:id', authenticateToken, async (req, res) => {
     }
 });
 
+// Deletar projeto
+app.delete('/projects/:id', authenticateToken, async (req, res) => {
+    try {
+        const project = await prisma.project.findUnique({
+            where: { id: req.params.id },
+            include: {
+                deliveries: true,
+                feedbacks: true
+            }
+        });
+
+        if (!project) {
+            return res.status(404).json({ error: 'Projeto não encontrado' });
+        }
+
+        // Verificar permissão (apenas o dono pode deletar)
+        if (req.user.role === 'STUDENT' && project.studentId !== req.user.id) {
+            return res.status(403).json({ error: 'Sem permissão para deletar este projeto' });
+        }
+
+        // Deletar dependências primeiro (entregas e feedbacks)
+        await prisma.delivery.deleteMany({
+            where: { projectId: req.params.id }
+        });
+
+        await prisma.feedback.deleteMany({
+            where: { projectId: req.params.id }
+        });
+
+        // Agora deletar o projeto
+        await prisma.project.delete({
+            where: { id: req.params.id }
+        });
+
+        return res.status(200).json({ message: 'Projeto deletado com sucesso' });
+    } catch (error) {
+        console.error('Erro ao deletar projeto:', error);
+        return res.status(500).json({ error: 'Erro ao deletar projeto' });
+    }
+});
+
 // ==================== ROTAS DE ENTREGAS ====================
 
 // Criar entrega
