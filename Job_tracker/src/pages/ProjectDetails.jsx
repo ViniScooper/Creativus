@@ -1,18 +1,60 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { projects } from '../data/mockData';
+import { useAuth } from '../contexts/AuthContext';
 import { CheckCircle, Upload, MessageSquare, FileText, ChevronRight, ArrowLeft } from 'lucide-react';
 
 const ProjectDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const project = projects.find(p => p.id === parseInt(id));
+    const [project, setProject] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const { token } = useAuth();
     const [activeTab, setActiveTab] = useState('Briefing');
 
-    if (!project) return <div className="container">Projeto não encontrado</div>;
+    // Buscar projeto específico da API
+    useEffect(() => {
+        fetchProject();
+    }, [id, token]);
+
+    const fetchProject = async () => {
+        try {
+            const response = await fetch(`http://localhost:3000/projects/${id}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setProject(data);
+            } else {
+                setError('Projeto não encontrado');
+            }
+        } catch (error) {
+            console.error('Erro ao buscar projeto:', error);
+            setError('Erro ao carregar projeto');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) return <div className="container">Carregando projeto...</div>;
+    if (error || !project) return <div className="container">{error || 'Projeto não encontrado'}</div>;
+
+    // Mapear status da API para português
+    const mapStatus = (status) => {
+        const statusMap = {
+            'BRIEFING': 'Briefing',
+            'PROTOTYPE': 'Protótipo',
+            'REVIEW': 'Revisão',
+            'FINALIZATION': 'Finalização'
+        };
+        return statusMap[status] || status;
+    };
 
     const steps = ['Briefing', 'Protótipo', 'Revisão', 'Finalização'];
-    const currentStepIndex = steps.indexOf(project.status);
+    const currentStepIndex = steps.indexOf(mapStatus(project.status));
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -38,7 +80,7 @@ const ProjectDetails = () => {
                                 <button className="btn btn-primary"><Upload size={18} /> Enviar Nova Versão</button>
                             </div>
 
-                            {project.deliveries.length > 0 ? (
+                            {project.deliveries && project.deliveries.length > 0 ? (
                                 <div style={{ display: 'grid', gap: '1rem' }}>
                                     {project.deliveries.map(delivery => (
                                         <div key={delivery.id} style={{ padding: '1.5rem', border: '1px solid var(--color-border)', borderRadius: '1rem', backgroundColor: 'var(--color-bg)' }}>
@@ -63,7 +105,7 @@ const ProjectDetails = () => {
                     <div className="animate-fade-in">
                         <div className="card">
                             <h3>Feedback & Comentários</h3>
-                            {project.feedback.length > 0 ? (
+                            {project.feedback && project.feedback.length > 0 ? (
                                 <div style={{ display: 'grid', gap: '1rem', marginTop: '1.5rem' }}>
                                     {project.feedback.map(fb => (
                                         <div key={fb.id} style={{ padding: '1.5rem', backgroundColor: 'var(--color-bg)', borderRadius: '1rem', border: '1px solid var(--color-border)' }}>
@@ -138,11 +180,11 @@ const ProjectDetails = () => {
             <div className="card" style={{ marginBottom: '2.5rem', padding: '1.5rem 2rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                     <span className="text-sm font-bold text-muted">Progresso Geral</span>
-                    <span className="text-sm font-bold text-muted">{project.progress}%</span>
+                    <span className="text-sm font-bold text-muted">{project.progress || 0}%</span>
                 </div>
                 <div style={{ width: '100%', height: '12px', backgroundColor: 'var(--color-bg)', borderRadius: '6px', overflow: 'hidden' }}>
                     <div style={{
-                        width: `${project.progress}%`,
+                        width: `${project.progress || 0}%`,
                         height: '100%',
                         background: 'linear-gradient(90deg, var(--color-primary), #ec4899)',
                         borderRadius: '6px',

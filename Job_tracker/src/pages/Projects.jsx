@@ -1,14 +1,53 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FolderKanban, ArrowRight, Search } from 'lucide-react';
-import { projects } from '../data/mockData';
+import { useAuth } from '../contexts/AuthContext';
 
 const Projects = () => {
+    const [projects, setProjects] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('Todos');
     const [searchTerm, setSearchTerm] = useState('');
+    const { token } = useAuth();
+
+    // Buscar projetos da API
+    useEffect(() => {
+        fetchProjects();
+    }, [token]);
+
+    const fetchProjects = async () => {
+        try {
+            const response = await fetch('http://localhost:3000/projects', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setProjects(data);
+            }
+        } catch (error) {
+            console.error('Erro ao buscar projetos:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Mapear status da API para português
+    const mapStatus = (status) => {
+        const statusMap = {
+            'BRIEFING': 'Briefing',
+            'PROTOTYPE': 'Protótipo',
+            'REVIEW': 'Revisão',
+            'FINALIZATION': 'Finalização'
+        };
+        return statusMap[status] || status;
+    };
 
     const filteredProjects = projects.filter(p => {
-        const matchesStatus = filter === 'Todos' || p.status === filter;
+        const projectStatus = mapStatus(p.status);
+        const matchesStatus = filter === 'Todos' || projectStatus === filter;
         const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.description.toLowerCase().includes(searchTerm.toLowerCase());
         return matchesStatus && matchesSearch;
@@ -74,76 +113,82 @@ const Projects = () => {
 
             {/* Projects Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem' }}>
-                {filteredProjects.map(project => (
-                    <Link
-                        key={project.id}
-                        to={`/projects/${project.id}`}
-                        className="card"
-                        style={{
-                            cursor: 'pointer',
-                            textDecoration: 'none',
-                            color: 'inherit',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            height: '100%'
-                        }}
-                    >
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '1rem',
-                            marginBottom: '1.5rem',
-                            paddingBottom: '1.5rem',
-                            borderBottom: '1px solid var(--color-border)'
-                        }}>
+                {loading ? (
+                    <div style={{ textAlign: 'center', padding: '4rem', gridColumn: '1 / -1' }}>
+                        <p className="text-muted">Carregando projetos...</p>
+                    </div>
+                ) : (
+                    filteredProjects.map(project => (
+                        <Link
+                            key={project.id}
+                            to={`/projects/${project.id}`}
+                            className="card"
+                            style={{
+                                cursor: 'pointer',
+                                textDecoration: 'none',
+                                color: 'inherit',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                height: '100%'
+                            }}
+                        >
                             <div style={{
-                                padding: '0.75rem',
-                                backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                                borderRadius: '0.75rem',
-                                color: 'var(--color-primary)'
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '1rem',
+                                marginBottom: '1.5rem',
+                                paddingBottom: '1.5rem',
+                                borderBottom: '1px solid var(--color-border)'
                             }}>
-                                <FolderKanban size={24} />
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{project.title}</h3>
-                            </div>
-                        </div>
-
-                        <p className="text-muted" style={{ marginBottom: '1.5rem', flex: 1 }}>
-                            {project.description}
-                        </p>
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
-                            <span className={`badge ${getStatusColor(project.status)}`}>
-                                {project.status}
-                            </span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <span className="text-sm text-muted">Prazo: {project.deadline}</span>
-                                <ArrowRight size={18} color="var(--color-primary)" />
-                            </div>
-                        </div>
-
-                        {/* Progress Bar */}
-                        <div style={{ marginTop: '1.5rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                <span className="text-sm text-muted">Progresso</span>
-                                <span className="text-sm text-muted">{project.progress}%</span>
-                            </div>
-                            <div style={{ width: '100%', height: '6px', backgroundColor: 'var(--color-bg)', borderRadius: '3px', overflow: 'hidden' }}>
                                 <div style={{
-                                    width: `${project.progress}%`,
-                                    height: '100%',
-                                    background: 'linear-gradient(90deg, var(--color-primary), #ec4899)',
-                                    borderRadius: '3px',
-                                    transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
-                                }}></div>
+                                    padding: '0.75rem',
+                                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                                    borderRadius: '0.75rem',
+                                    color: 'var(--color-primary)'
+                                }}>
+                                    <FolderKanban size={24} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{project.title}</h3>
+                                </div>
                             </div>
-                        </div>
-                    </Link>
-                ))}
+
+                            <p className="text-muted" style={{ marginBottom: '1.5rem', flex: 1 }}>
+                                {project.description}
+                            </p>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+                                <span className={`badge ${getStatusColor(mapStatus(project.status))}`}>
+                                    {mapStatus(project.status)}
+                                </span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <span className="text-sm text-muted">Prazo: {project.deadline}</span>
+                                    <ArrowRight size={18} color="var(--color-primary)" />
+                                </div>
+                            </div>
+
+                            {/* Progress Bar */}
+                            <div style={{ marginTop: '1.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                    <span className="text-sm text-muted">Progresso</span>
+                                    <span className="text-sm text-muted">{project.progress || 0}%</span>
+                                </div>
+                                <div style={{ width: '100%', height: '6px', backgroundColor: 'var(--color-bg)', borderRadius: '3px', overflow: 'hidden' }}>
+                                    <div style={{
+                                        width: `${project.progress || 0}%`,
+                                        height: '100%',
+                                        background: 'linear-gradient(90deg, var(--color-primary), #ec4899)',
+                                        borderRadius: '3px',
+                                        transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
+                                    }}></div>
+                                </div>
+                            </div>
+                        </Link>
+                    ))
+                )}
             </div>
 
-            {filteredProjects.length === 0 && (
+            {!loading && filteredProjects.length === 0 && (
                 <div className="card" style={{ textAlign: 'center', padding: '4rem' }}>
                     <FolderKanban size={48} className="text-muted" style={{ marginBottom: '1rem' }} />
                     <p className="text-muted">Nenhum projeto encontrado com estes critérios.</p>
