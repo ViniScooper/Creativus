@@ -169,6 +169,14 @@ app.get('/projects', authenticateToken, async (req, res) => {
                         include: {
                             author: {
                                 select: { name: true }
+                            },
+                            replies: {
+                                include: {
+                                    author: {
+                                        select: { name: true, role: true }
+                                    }
+                                },
+                                orderBy: { createdAt: 'asc' }
                             }
                         }
                     }
@@ -185,6 +193,14 @@ app.get('/projects', authenticateToken, async (req, res) => {
                         include: {
                             author: {
                                 select: { name: true }
+                            },
+                            replies: {
+                                include: {
+                                    author: {
+                                        select: { name: true, role: true }
+                                    }
+                                },
+                                orderBy: { createdAt: 'asc' }
                             }
                         }
                     }
@@ -220,6 +236,14 @@ app.get('/projects/:id', authenticateToken, async (req, res) => {
                     include: {
                         author: {
                             select: { name: true, role: true }
+                        },
+                        replies: {
+                            include: {
+                                author: {
+                                    select: { name: true, role: true }
+                                }
+                            },
+                            orderBy: { createdAt: 'asc' }
                         }
                     },
                     orderBy: { createdAt: 'desc' }
@@ -395,6 +419,49 @@ app.post('/feedback', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Erro ao criar feedback:', error);
         return res.status(500).json({ error: 'Erro ao criar feedback' });
+    }
+});
+
+// Responder feedback (aluno ou professor)
+app.post('/feedback/:id/reply', authenticateToken, async (req, res) => {
+    try {
+        const { content } = req.body;
+        const feedbackId = req.params.id;
+
+        // Verificar se o feedback existe
+        const feedback = await prisma.feedback.findUnique({
+            where: { id: feedbackId },
+            include: { project: true }
+        });
+
+        if (!feedback) {
+            return res.status(404).json({ error: 'Feedback não encontrado' });
+        }
+
+        // Verificar permissão:
+        // - Professor pode responder qualquer feedback
+        // - Aluno só pode responder se for dono do projeto
+        if (req.user.role === 'STUDENT' && feedback.project.studentId !== req.user.id) {
+            return res.status(403).json({ error: 'Sem permissão para responder este feedback' });
+        }
+
+        const reply = await prisma.feedbackReply.create({
+            data: {
+                content,
+                feedbackId,
+                authorId: req.user.id
+            },
+            include: {
+                author: {
+                    select: { name: true, role: true }
+                }
+            }
+        });
+
+        return res.status(201).json(reply);
+    } catch (error) {
+        console.error('Erro ao responder feedback:', error);
+        return res.status(500).json({ error: 'Erro ao responder feedback' });
     }
 });
 

@@ -16,16 +16,12 @@ const ProjectDetails = () => {
     const [showBriefingModal, setShowBriefingModal] = useState(false);
     const [replyingToFeedback, setReplyingToFeedback] = useState(null);
     const [replyContent, setReplyContent] = useState('');
-    const [feedbackReplies, setFeedbackReplies] = useState({}); // Armazenar respostas localmente
+    const [generalFeedback, setGeneralFeedback] = useState('');
+    const [feedbackLoading, setFeedbackLoading] = useState(false);
 
     // Buscar projeto específico da API
     useEffect(() => {
         fetchProject();
-        // Carregar respostas salvas do localStorage
-        const savedReplies = localStorage.getItem(`feedbackReplies_${id}`);
-        if (savedReplies) {
-            setFeedbackReplies(JSON.parse(savedReplies));
-        }
     }, [id, token, refreshKey]);
 
     const fetchProject = async () => {
@@ -94,33 +90,82 @@ const ProjectDetails = () => {
             return;
         }
 
-        // Salvar resposta localmente
-        const newReplies = {
-            ...feedbackReplies,
-            [replyingToFeedback]: [
-                ...(feedbackReplies[replyingToFeedback] || []),
-                {
-                    id: Date.now().toString(),
-                    content: replyContent,
-                    author: user?.name || 'Você',
-                    createdAt: new Date().toISOString()
-                }
-            ]
-        };
+        setFeedbackLoading(true);
 
-        setFeedbackReplies(newReplies);
-        localStorage.setItem(`feedbackReplies_${id}`, JSON.stringify(newReplies));
+        try {
+            const response = await fetch(`http://localhost:3000/feedback/${replyingToFeedback}/reply`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    content: replyContent
+                })
+            });
 
-        alert('Resposta enviada com sucesso!');
-        setReplyingToFeedback(null);
-        setReplyContent('');
+            if (response.ok) {
+                alert('Resposta enviada com sucesso!');
+                setReplyingToFeedback(null);
+                setReplyContent('');
+                setRefreshKey(prev => prev + 1); // Recarregar projeto para mostrar a nova resposta
+            } else {
+                const errorData = await response.json();
+                alert(`Erro ao enviar resposta: ${errorData.error}`);
+            }
+        } catch (error) {
+            console.error('Erro ao enviar resposta:', error);
+            alert('Erro ao enviar resposta. Tente novamente.');
+        } finally {
+            setFeedbackLoading(false);
+        }
+    };
+
+    const handleSendGeneralFeedback = async () => {
+        if (!generalFeedback.trim()) {
+            alert('Digite um comentário antes de enviar.');
+            return;
+        }
+
+        setFeedbackLoading(true);
+
+        try {
+            // Criar uma entrega especial para comentários gerais
+            const response = await fetch('http://localhost:3000/deliveries', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    projectId: project.id,
+                    name: `Comentário geral: ${generalFeedback.substring(0, 50)}...`,
+                    comments: generalFeedback,
+                    fileUrl: null
+                })
+            });
+
+            if (response.ok) {
+                alert('Comentário enviado com sucesso!');
+                setGeneralFeedback('');
+                setRefreshKey(prev => prev + 1); // Recarregar projeto
+            } else {
+                const errorData = await response.json();
+                alert(`Erro ao enviar comentário: ${errorData.error}`);
+            }
+        } catch (error) {
+            console.error('Erro ao enviar comentário:', error);
+            alert('Erro ao enviar comentário. Tente novamente.');
+        } finally {
+            setFeedbackLoading(false);
+        }
     };
 
     const renderTabContent = () => {
         switch (activeTab) {
             case 'Briefing':
                 // Filtrar apenas documentos de briefing (que começam com "Briefing -")
-                const briefingDocuments = project.deliveries?.filter(delivery => 
+                const briefingDocuments = project.deliveries?.filter(delivery =>
                     delivery.name?.startsWith('Briefing -')
                 ) || [];
 
@@ -129,16 +174,16 @@ const ProjectDetails = () => {
                         <div className="card" style={{ marginBottom: '1.5rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                 <h3>Requisitos do Projeto</h3>
-                                <button 
+                                <button
                                     className="btn btn-primary"
                                     onClick={() => setShowBriefingModal(true)}
                                 >
                                     <Upload size={18} /> Anexar Documento
                                 </button>
                             </div>
-                            
+
                             <p className="text-muted" style={{ marginBottom: '1rem' }}>{project.briefing}</p>
-                            
+
                             {/* Lista de documentos do briefing */}
                             {briefingDocuments.length > 0 ? (
                                 <div style={{ display: 'grid', gap: '1rem', marginTop: '1.5rem' }}>
@@ -154,15 +199,15 @@ const ProjectDetails = () => {
                                                 {doc.fileUrl && (
                                                     <div>
                                                         {doc.fileUrl.startsWith('http') ? (
-                                                            <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" 
-                                                               style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>
+                                                            <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
+                                                                style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>
                                                                 🔗 Abrir Link
                                                             </a>
                                                         ) : (
-                                                            <button 
+                                                            <button
                                                                 onClick={() => handleDownload(doc)}
-                                                                style={{ 
-                                                                    padding: '0.3rem 0.6rem', 
+                                                                style={{
+                                                                    padding: '0.3rem 0.6rem',
                                                                     fontSize: '0.8rem',
                                                                     backgroundColor: 'var(--color-primary)',
                                                                     color: 'white',
@@ -196,9 +241,9 @@ const ProjectDetails = () => {
                     </div>
                 );
             case 'Protótipo':
-                // Filtrar apenas entregas (que NÃO começam com "Briefing -")
-                const deliveries = project.deliveries?.filter(delivery => 
-                    !delivery.name?.startsWith('Briefing -')
+                // Filtrar apenas entregas (que NÃO começam com "Briefing -" e nem "Resposta ao feedback:")
+                const deliveries = project.deliveries?.filter(delivery =>
+                    !delivery.name?.startsWith('Briefing -') && !delivery.name?.startsWith('Resposta ao feedback:')
                 ) || [];
 
                 return (
@@ -206,7 +251,7 @@ const ProjectDetails = () => {
                         <div className="card">
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', alignItems: 'center' }}>
                                 <h3>Arquivos de Design</h3>
-                                <button 
+                                <button
                                     className="btn btn-primary"
                                     onClick={() => setShowDeliveryModal(true)}
                                 >
@@ -228,18 +273,18 @@ const ProjectDetails = () => {
                                             {delivery.fileUrl && (
                                                 <div style={{ marginTop: '0.5rem' }}>
                                                     {delivery.fileUrl.startsWith('http') ? (
-                                                        <a href={delivery.fileUrl} target="_blank" rel="noopener noreferrer" 
-                                                           style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>
+                                                        <a href={delivery.fileUrl} target="_blank" rel="noopener noreferrer"
+                                                            style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>
                                                             🔗 Abrir Link
                                                         </a>
                                                     ) : (
                                                         <div>
                                                             <span className="text-sm">📄 {delivery.fileUrl}</span>
-                                                            <button 
+                                                            <button
                                                                 onClick={() => handleDownload(delivery)}
-                                                                style={{ 
-                                                                    marginLeft: '1rem', 
-                                                                    padding: '0.2rem 0.5rem', 
+                                                                style={{
+                                                                    marginLeft: '1rem',
+                                                                    padding: '0.2rem 0.5rem',
                                                                     fontSize: '0.8rem',
                                                                     backgroundColor: 'var(--color-primary)',
                                                                     color: 'white',
@@ -283,26 +328,26 @@ const ProjectDetails = () => {
                                             </div>
                                             <p>{fb.content}</p>
                                             <div style={{ marginTop: '1rem' }}>
-                                                <button 
-                                                    className="btn btn-outline" 
+                                                <button
+                                                    className="btn btn-outline"
                                                     style={{ fontSize: '0.9rem', padding: '0.4rem 1rem' }}
                                                     onClick={() => handleReplyToFeedback(fb.id)}
                                                 >
                                                     Responder
                                                 </button>
                                             </div>
-                                            
+
                                             {/* Mostrar respostas existentes */}
-                                            {feedbackReplies[fb.id] && feedbackReplies[fb.id].map((reply) => (
+                                            {fb.replies && fb.replies.map((reply) => (
                                                 <div key={reply.id} style={{ marginTop: '1rem', marginLeft: '2rem', padding: '1rem', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                                        <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{reply.author}</span>
+                                                        <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{reply.author?.name || 'Você'}</span>
                                                         <span className="text-sm text-muted">{new Date(reply.createdAt).toLocaleDateString('pt-BR')}</span>
                                                     </div>
                                                     <p style={{ fontSize: '0.95rem', margin: 0 }}>{reply.content}</p>
                                                 </div>
                                             ))}
-                                            
+
                                             {/* Campo de resposta */}
                                             {replyingToFeedback === fb.id && (
                                                 <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
@@ -315,20 +360,22 @@ const ProjectDetails = () => {
                                                         style={{ width: '100%', marginBottom: '0.5rem' }}
                                                     />
                                                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                        <button 
-                                                            className="btn btn-primary" 
+                                                        <button
+                                                            className="btn btn-primary"
                                                             style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}
                                                             onClick={handleSendReply}
+                                                            disabled={feedbackLoading}
                                                         >
-                                                            Enviar Resposta
+                                                            {feedbackLoading ? 'Enviando...' : 'Enviar Resposta'}
                                                         </button>
-                                                        <button 
-                                                            className="btn btn-outline" 
+                                                        <button
+                                                            className="btn btn-outline"
                                                             style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}
                                                             onClick={() => {
                                                                 setReplyingToFeedback(null);
                                                                 setReplyContent('');
                                                             }}
+                                                            disabled={feedbackLoading}
                                                         >
                                                             Cancelar
                                                         </button>
@@ -343,8 +390,20 @@ const ProjectDetails = () => {
                             )}
 
                             <div style={{ marginTop: '2rem' }}>
-                                <textarea placeholder="Adicione seus comentários..." rows="4"></textarea>
-                                <button className="btn btn-primary" style={{ marginTop: '0.5rem' }}>Enviar Feedback</button>
+                                <textarea
+                                    placeholder="Adicione seus comentários..."
+                                    rows="4"
+                                    value={generalFeedback}
+                                    onChange={(e) => setGeneralFeedback(e.target.value)}
+                                ></textarea>
+                                <button
+                                    className="btn btn-primary"
+                                    style={{ marginTop: '0.5rem' }}
+                                    onClick={handleSendGeneralFeedback}
+                                    disabled={feedbackLoading}
+                                >
+                                    {feedbackLoading ? 'Enviando...' : 'Enviar Feedback'}
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -386,10 +445,10 @@ const ProjectDetails = () => {
             // Para arquivos .txt, criamos um blob com conteúdo de exemplo
             // Em um sistema real, você baixaria o arquivo do servidor
             const content = `Entrega: ${item.name}\nComentários: ${item.comments || 'N/A'}\nData: ${new Date(item.createdAt).toLocaleString('pt-BR')}\n\nConteúdo do arquivo seria baixado aqui...`;
-            
+
             const blob = new Blob([content], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
-            
+
             const a = document.createElement('a');
             a.href = url;
             a.download = item.name || 'entrega.txt';
@@ -397,7 +456,7 @@ const ProjectDetails = () => {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            
+
             console.log('Download simulado realizado para:', item.name);
         } catch (error) {
             console.error('Erro no download:', error);
@@ -508,7 +567,7 @@ const ProjectDetails = () => {
                             </button>
                         </div>
 
-                        <BriefingForm 
+                        <BriefingForm
                             projectId={project.id}
                             onClose={() => setShowBriefingModal(false)}
                             onSuccess={() => {
@@ -563,7 +622,7 @@ const ProjectDetails = () => {
                             </button>
                         </div>
 
-                        <DeliveryForm 
+                        <DeliveryForm
                             projectId={project.id}
                             onClose={() => setShowDeliveryModal(false)}
                             onSuccess={handleDeliverySuccess}

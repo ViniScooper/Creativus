@@ -5,7 +5,10 @@ import { useAuth } from '../contexts/AuthContext';
 const Feedback = () => {
     const [feedbacks, setFeedbacks] = useState([]);
     const [loading, setLoading] = useState(true);
-    const { token } = useAuth();
+    const { token, user } = useAuth();
+    const [replyingToFeedback, setReplyingToFeedback] = useState(null);
+    const [replyContent, setReplyContent] = useState('');
+    const [replyLoading, setReplyLoading] = useState(false);
 
     useEffect(() => {
         fetchFeedbacks();
@@ -21,16 +24,17 @@ const Feedback = () => {
 
             if (response.ok) {
                 const projects = await response.json();
-                
+
                 // Extrair todos os feedbacks dos projetos do usuário
                 const allFeedbacks = projects.flatMap(p =>
-                    p.feedbacks.map(f => ({ 
-                        ...f, 
-                        projectTitle: p.title, 
-                        projectId: p.id 
+                    p.feedbacks.map(f => ({
+                        ...f,
+                        projectTitle: p.title,
+                        projectId: p.id,
+                        replies: f.replies || []
                     }))
                 );
-                
+
                 setFeedbacks(allFeedbacks);
             }
         } catch (error) {
@@ -44,6 +48,49 @@ const Feedback = () => {
         if (!dateString) return '';
         const date = new Date(dateString);
         return date.toLocaleDateString('pt-BR');
+    };
+
+    const handleReplyToFeedback = (feedbackId) => {
+        setReplyingToFeedback(feedbackId);
+        setReplyContent('');
+    };
+
+    const handleSendReply = async () => {
+        if (!replyContent.trim()) {
+            alert('Digite uma resposta antes de enviar.');
+            return;
+        }
+
+        setReplyLoading(true);
+
+        try {
+            const response = await fetch(`http://localhost:3000/feedback/${replyingToFeedback}/reply`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    content: replyContent
+                })
+            });
+
+            if (response.ok) {
+                alert('Resposta enviada com sucesso!');
+                setReplyingToFeedback(null);
+                setReplyContent('');
+                // Recarregar feedbacks para mostrar a nova resposta
+                fetchFeedbacks();
+            } else {
+                const errorData = await response.json();
+                alert(`Erro ao enviar resposta: ${errorData.error}`);
+            }
+        } catch (error) {
+            console.error('Erro ao enviar resposta:', error);
+            alert('Erro ao enviar resposta. Tente novamente.');
+        } finally {
+            setReplyLoading(false);
+        }
     };
 
     if (loading) {
@@ -88,8 +135,63 @@ const Feedback = () => {
                                     <MessageSquare size={20} style={{ position: 'absolute', top: '1.5rem', left: '-1rem', color: 'var(--color-border)', backgroundColor: 'var(--color-surface)', borderRadius: '50%' }} />
                                     <p style={{ fontSize: '1.05rem' }}>{item.content}</p>
                                 </div>
+
+                                {/* Mostrar respostas existentes */}
+                                {item.replies && item.replies.map((reply) => (
+                                    <div key={reply.id} style={{ marginTop: '1rem', marginLeft: '2rem', padding: '1rem', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                            <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{reply.author?.name || 'Você'}</span>
+                                            <span className="text-sm text-muted">{formatDate(reply.createdAt)}</span>
+                                        </div>
+                                        <p style={{ fontSize: '0.95rem', margin: 0 }}>{reply.content}</p>
+                                    </div>
+                                ))}
+
                                 <div style={{ marginTop: '1.25rem' }}>
-                                    <button className="btn btn-outline" style={{ fontSize: '0.9rem', padding: '0.4rem 1rem' }}>Responder</button>
+                                    <button
+                                        className="btn btn-outline"
+                                        style={{ fontSize: '0.9rem', padding: '0.4rem 1rem' }}
+                                        onClick={() => handleReplyToFeedback(item.id)}
+                                        disabled={replyingToFeedback === item.id && replyLoading}
+                                    >
+                                        {replyingToFeedback === item.id && replyLoading ? 'Enviando...' : 'Responder'}
+                                    </button>
+
+                                    {/* Campo de resposta */}
+                                    {replyingToFeedback === item.id && (
+                                        <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                                            <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem' }}>Sua Resposta:</h4>
+                                            <textarea
+                                                value={replyContent}
+                                                onChange={(e) => setReplyContent(e.target.value)}
+                                                placeholder="Digite sua resposta..."
+                                                rows="3"
+                                                style={{ width: '100%', marginBottom: '0.5rem' }}
+                                                disabled={replyLoading}
+                                            />
+                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                <button
+                                                    className="btn btn-primary"
+                                                    style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}
+                                                    onClick={handleSendReply}
+                                                    disabled={replyLoading}
+                                                >
+                                                    {replyLoading ? 'Enviando...' : 'Enviar Resposta'}
+                                                </button>
+                                                <button
+                                                    className="btn btn-outline"
+                                                    style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}
+                                                    onClick={() => {
+                                                        setReplyingToFeedback(null);
+                                                        setReplyContent('');
+                                                    }}
+                                                    disabled={replyLoading}
+                                                >
+                                                    Cancelar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

@@ -23,16 +23,16 @@ const Deliveries = () => {
 
             if (response.ok) {
                 const projects = await response.json();
-                
+
                 // Extrair todas as entregas dos projetos do usuário
                 const allDeliveries = projects.flatMap(p =>
-                    p.deliveries.map(d => ({ 
-                        ...d, 
-                        projectTitle: p.title, 
-                        projectId: p.id 
+                    p.deliveries.map(d => ({
+                        ...d,
+                        projectTitle: p.title,
+                        projectId: p.id
                     }))
-                );
-                
+                ).filter(d => !d.name?.startsWith('Resposta ao feedback:'));
+
                 setDeliveries(allDeliveries);
             }
         } catch (error) {
@@ -61,7 +61,7 @@ const Deliveries = () => {
         <div className="animate-fade-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
                 <h1>Minhas Entregas</h1>
-                <button 
+                <button
                     className="btn btn-primary"
                     onClick={handleNewDelivery}
                 >
