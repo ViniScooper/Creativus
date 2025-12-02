@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { CheckCircle, Upload, MessageSquare, FileText, ChevronRight, ArrowLeft } from 'lucide-react';
+import { CheckCircle, Upload, MessageSquare, FileText, ChevronRight, ArrowLeft, Link, File } from 'lucide-react';
 
 const ProjectDetails = () => {
     const { id } = useParams();
@@ -11,11 +11,14 @@ const ProjectDetails = () => {
     const [error, setError] = useState('');
     const { token } = useAuth();
     const [activeTab, setActiveTab] = useState('Briefing');
+    const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+    const [refreshKey, setRefreshKey] = useState(0);
+    const [showBriefingModal, setShowBriefingModal] = useState(false);
 
     // Buscar projeto específico da API
     useEffect(() => {
         fetchProject();
-    }, [id, token]);
+    }, [id, token, refreshKey]); // Adicionado refreshKey para forçar re-render
 
     const fetchProject = async () => {
         try {
@@ -27,6 +30,10 @@ const ProjectDetails = () => {
 
             if (response.ok) {
                 const data = await response.json();
+                console.log('=== PROJECTO CARREGADO ===');
+                console.log('Project:', data.title);
+                console.log('Deliveries count:', data.deliveries?.length || 0);
+                console.log('Deliveries:', data.deliveries);
                 setProject(data);
             } else {
                 setError('Projeto não encontrado');
@@ -56,45 +63,165 @@ const ProjectDetails = () => {
     const steps = ['Briefing', 'Protótipo', 'Revisão', 'Finalização'];
     const currentStepIndex = steps.indexOf(mapStatus(project.status));
 
+    const handleNewDelivery = () => {
+        console.log('=== BOTÃO CLICADO ===');
+        console.log('Abrindo modal de entrega');
+        setShowDeliveryModal(true);
+    };
+
+    const handleDeliverySuccess = () => {
+        console.log('=== NOVA ENTREGA CRIADA ===');
+        setRefreshKey(prev => prev + 1); // Forçar re-render
+        fetchProject(); // Recarregar projeto
+    };
+
     const renderTabContent = () => {
         switch (activeTab) {
             case 'Briefing':
+                // Filtrar apenas documentos de briefing (que começam com "Briefing -")
+                const briefingDocuments = project.deliveries?.filter(delivery => 
+                    delivery.name?.startsWith('Briefing -')
+                ) || [];
+
                 return (
                     <div className="animate-fade-in">
                         <div className="card" style={{ marginBottom: '1.5rem' }}>
-                            <h3>Requisitos do Projeto</h3>
-                            <p className="text-muted" style={{ marginBottom: '1rem' }}>{project.briefing}</p>
-                            <div style={{ padding: '1.5rem', border: '2px dashed var(--color-border)', borderRadius: '1rem', textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                                <FileText size={32} className="text-muted" style={{ marginBottom: '0.5rem' }} />
-                                <p className="text-sm text-muted">Briefing_Document_v1.pdf</p>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <h3>Requisitos do Projeto</h3>
+                                <button 
+                                    className="btn btn-primary"
+                                    onClick={() => setShowBriefingModal(true)}
+                                >
+                                    <Upload size={18} /> Anexar Documento
+                                </button>
                             </div>
+                            
+                            <p className="text-muted" style={{ marginBottom: '1rem' }}>{project.briefing}</p>
+                            
+                            {/* Lista de documentos do briefing */}
+                            {briefingDocuments.length > 0 ? (
+                                <div style={{ display: 'grid', gap: '1rem', marginTop: '1.5rem' }}>
+                                    {briefingDocuments.map((doc, index) => (
+                                        <div key={doc.id || index} style={{ padding: '1rem', border: '1px solid var(--color-border)', borderRadius: '8px', backgroundColor: 'var(--color-bg)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div>
+                                                    <strong>{doc.name}</strong>
+                                                    <p className="text-sm text-muted" style={{ margin: '0.2rem 0' }}>
+                                                        {new Date(doc.createdAt || Date.now()).toLocaleDateString('pt-BR')}
+                                                    </p>
+                                                </div>
+                                                {doc.fileUrl && (
+                                                    <div>
+                                                        {doc.fileUrl.startsWith('http') ? (
+                                                            <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" 
+                                                               style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>
+                                                                🔗 Abrir Link
+                                                            </a>
+                                                        ) : (
+                                                            <button 
+                                                                onClick={() => handleDownload(doc)}
+                                                                style={{ 
+                                                                    padding: '0.3rem 0.6rem', 
+                                                                    fontSize: '0.8rem',
+                                                                    backgroundColor: 'var(--color-primary)',
+                                                                    color: 'white',
+                                                                    border: 'none',
+                                                                    borderRadius: '4px',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                            >
+                                                                ⬇️ Download
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {doc.comments && (
+                                                <p className="text-sm" style={{ marginTop: '0.5rem', color: 'var(--color-text-muted)' }}>
+                                                    {doc.comments}
+                                                </p>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div style={{ padding: '1.5rem', border: '2px dashed var(--color-border)', borderRadius: '1rem', textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                                    <FileText size={32} className="text-muted" style={{ marginBottom: '0.5rem' }} />
+                                    <p className="text-sm text-muted">Nenhum documento anexado ainda.</p>
+                                    <p className="text-sm text-muted">Clique em "Anexar Documento" para adicionar arquivos ou links.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 );
             case 'Protótipo':
+                // Filtrar apenas entregas (que NÃO começam com "Briefing -")
+                const deliveries = project.deliveries?.filter(delivery => 
+                    !delivery.name?.startsWith('Briefing -')
+                ) || [];
+
                 return (
                     <div className="animate-fade-in">
                         <div className="card">
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', alignItems: 'center' }}>
                                 <h3>Arquivos de Design</h3>
-                                <button className="btn btn-primary"><Upload size={18} /> Enviar Nova Versão</button>
+                                <button 
+                                    className="btn btn-primary"
+                                    onClick={() => setShowDeliveryModal(true)}
+                                >
+                                    <Upload size={18} /> Enviar Nova Versão
+                                </button>
                             </div>
 
-                            {project.deliveries && project.deliveries.length > 0 ? (
+                            {deliveries.length > 0 ? (
                                 <div style={{ display: 'grid', gap: '1rem' }}>
-                                    {project.deliveries.map(delivery => (
-                                        <div key={delivery.id} style={{ padding: '1.5rem', border: '1px solid var(--color-border)', borderRadius: '1rem', backgroundColor: 'var(--color-bg)' }}>
+                                    {deliveries.map((delivery, index) => (
+                                        <div key={delivery.id || index} style={{ padding: '1.5rem', border: '1px solid var(--color-border)', borderRadius: '1rem', backgroundColor: 'var(--color-bg)' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                                                 <strong>{delivery.name}</strong>
-                                                <span className="text-sm text-muted">{delivery.date}</span>
+                                                <span className="text-sm text-muted">
+                                                    {new Date(delivery.createdAt || Date.now()).toLocaleDateString('pt-BR')}
+                                                </span>
                                             </div>
-                                            <p className="text-sm text-muted">{delivery.comments}</p>
+                                            <p className="text-sm text-muted">{delivery.comments || 'Sem comentários'}</p>
+                                            {delivery.fileUrl && (
+                                                <div style={{ marginTop: '0.5rem' }}>
+                                                    {delivery.fileUrl.startsWith('http') ? (
+                                                        <a href={delivery.fileUrl} target="_blank" rel="noopener noreferrer" 
+                                                           style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>
+                                                            🔗 Abrir Link
+                                                        </a>
+                                                    ) : (
+                                                        <div>
+                                                            <span className="text-sm">📄 {delivery.fileUrl}</span>
+                                                            <button 
+                                                                onClick={() => handleDownload(delivery)}
+                                                                style={{ 
+                                                                    marginLeft: '1rem', 
+                                                                    padding: '0.2rem 0.5rem', 
+                                                                    fontSize: '0.8rem',
+                                                                    backgroundColor: 'var(--color-primary)',
+                                                                    color: 'white',
+                                                                    border: 'none',
+                                                                    borderRadius: '4px',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                            >
+                                                                ⬇️ Download
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
                             ) : (
                                 <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
-                                    <p>Nenhum protótipo enviado ainda.</p>
+                                    <p>Nenhuma entrega encontrada.</p>
+                                    <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>
+                                        Clique em "Enviar Nova Versão" para fazer sua primeira entrega.
+                                    </p>
                                 </div>
                             )}
                         </div>
@@ -110,8 +237,8 @@ const ProjectDetails = () => {
                                     {project.feedback.map(fb => (
                                         <div key={fb.id} style={{ padding: '1.5rem', backgroundColor: 'var(--color-bg)', borderRadius: '1rem', border: '1px solid var(--color-border)' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                                <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{fb.author}</span>
-                                                <span className="text-sm text-muted">{fb.date}</span>
+                                                <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{fb.author.name}</span>
+                                                <span className="text-sm text-muted">{new Date(fb.createdAt).toLocaleDateString('pt-BR')}</span>
                                             </div>
                                             <p>{fb.content}</p>
                                         </div>
@@ -156,6 +283,31 @@ const ProjectDetails = () => {
                 );
             default:
                 return null;
+        }
+    };
+
+    // Função para download de arquivos .txt
+    const handleDownload = (item) => {
+        try {
+            // Para arquivos .txt, criamos um blob com conteúdo de exemplo
+            // Em um sistema real, você baixaria o arquivo do servidor
+            const content = `Entrega: ${item.name}\nComentários: ${item.comments || 'N/A'}\nData: ${new Date(item.createdAt).toLocaleString('pt-BR')}\n\nConteúdo do arquivo seria baixado aqui...`;
+            
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = item.name || 'entrega.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            console.log('Download simulado realizado para:', item.name);
+        } catch (error) {
+            console.error('Erro no download:', error);
+            alert('Erro ao fazer download');
         }
     };
 
@@ -218,7 +370,496 @@ const ProjectDetails = () => {
             </div>
 
             {renderTabContent()}
+
+            {/* Modal de Briefing */}
+            {showBriefingModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                    padding: '2rem'
+                }}>
+                    <div className="card" style={{
+                        maxWidth: '500px',
+                        width: '100%',
+                        maxHeight: '90vh',
+                        overflow: 'auto'
+                    }}>
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '2rem'
+                        }}>
+                            <h2 style={{ margin: 0 }}>Anexar Documento ao Briefing</h2>
+                            <button
+                                onClick={() => setShowBriefingModal(false)}
+                                style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'var(--color-text-muted)',
+                                    cursor: 'pointer',
+                                    padding: '0.5rem',
+                                    fontSize: '1.2rem'
+                                }}
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <BriefingForm 
+                            projectId={project.id}
+                            onClose={() => setShowBriefingModal(false)}
+                            onSuccess={() => {
+                                setShowBriefingModal(false);
+                                fetchProject();
+                            }}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Entrega */}
+            {showDeliveryModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                    padding: '2rem'
+                }}>
+                    <div className="card" style={{
+                        maxWidth: '500px',
+                        width: '100%',
+                        maxHeight: '90vh',
+                        overflow: 'auto'
+                    }}>
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '2rem'
+                        }}>
+                            <h2 style={{ margin: 0 }}>Nova Entrega</h2>
+                            <button
+                                onClick={() => setShowDeliveryModal(false)}
+                                style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'var(--color-text-muted)',
+                                    cursor: 'pointer',
+                                    padding: '0.5rem',
+                                    fontSize: '1.2rem'
+                                }}
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <DeliveryForm 
+                            projectId={project.id}
+                            onClose={() => setShowDeliveryModal(false)}
+                            onSuccess={handleDeliverySuccess}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
+    );
+};
+
+// Componente para formulário de briefing
+const BriefingForm = ({ projectId, onClose, onSuccess }) => {
+    const [deliveryType, setDeliveryType] = useState('file');
+    const [file, setFile] = useState(null);
+    const [link, setLink] = useState('');
+    const [comments, setComments] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const { token } = useAuth();
+
+    const handleFileChange = (e) => {
+        const selectedFile = e.target.files[0];
+        if (selectedFile) {
+            if (!selectedFile.name.toLowerCase().endsWith('.txt')) {
+                setError('Apenas arquivos .txt são aceitos');
+                setFile(null);
+                return;
+            }
+            setError('');
+            setFile(selectedFile);
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+
+        try {
+            let name, fileUrl;
+
+            if (deliveryType === 'file' && file) {
+                name = `Briefing - ${file.name}`;
+                fileUrl = `Arquivo: ${file.name} (${file.size} bytes)`;
+            } else if (deliveryType === 'link' && link) {
+                name = `Briefing - Link`;
+                fileUrl = link;
+            } else {
+                throw new Error('Selecione um arquivo ou forneça um link');
+            }
+
+            console.log('Enviando documento de briefing:', { projectId, name, fileUrl, comments });
+
+            const response = await fetch('http://localhost:3000/deliveries', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    projectId,
+                    name,
+                    comments: comments || 'Documento do briefing',
+                    fileUrl
+                })
+            });
+
+            console.log('Resposta status:', response.status);
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log('Documento criado:', result);
+                alert('Documento anexado com sucesso!');
+                onSuccess();
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `Erro ${response.status}`);
+            }
+        } catch (err) {
+            console.error('Erro:', err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit}>
+            {error && (
+                <div style={{
+                    padding: '1rem',
+                    backgroundColor: 'rgba(248, 113, 113, 0.1)',
+                    border: '1px solid #ef4444',
+                    borderRadius: '8px',
+                    color: '#dc2626',
+                    marginBottom: '1.5rem'
+                }}>
+                    {error}
+                </div>
+            )}
+
+            {/* Tipo de documento */}
+            <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                    Tipo de Documento
+                </label>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                        <input
+                            type="radio"
+                            name="deliveryType"
+                            value="file"
+                            checked={deliveryType === 'file'}
+                            onChange={(e) => setDeliveryType(e.target.value)}
+                        />
+                        📄 Arquivo .txt
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                        <input
+                            type="radio"
+                            name="deliveryType"
+                            value="link"
+                            checked={deliveryType === 'link'}
+                            onChange={(e) => setDeliveryType(e.target.value)}
+                        />
+                        🔗 Link
+                    </label>
+                </div>
+            </div>
+
+            {/* Campo de arquivo ou link */}
+            {deliveryType === 'file' ? (
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                        Arquivo .txt do Briefing
+                    </label>
+                    <input
+                        type="file"
+                        accept=".txt"
+                        onChange={handleFileChange}
+                        style={{ marginBottom: 0 }}
+                        required
+                    />
+                    {file && (
+                        <p className="text-sm text-muted" style={{ marginTop: '0.5rem' }}>
+                            ✅ Arquivo selecionado: {file.name}
+                        </p>
+                    )}
+                </div>
+            ) : (
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                        Link do Documento
+                    </label>
+                    <input
+                        type="url"
+                        value={link}
+                        onChange={(e) => setLink(e.target.value)}
+                        placeholder="https://exemplo.com/documento-briefing"
+                        required
+                        style={{ marginBottom: 0 }}
+                    />
+                </div>
+            )}
+
+            {/* Comentários */}
+            <div style={{ marginBottom: '2rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                    Descrição (opcional)
+                </label>
+                <textarea
+                    value={comments}
+                    onChange={(e) => setComments(e.target.value)}
+                    placeholder="Descreva o documento anexado..."
+                    rows="3"
+                    style={{ marginBottom: 0 }}
+                />
+            </div>
+
+            {/* Botões */}
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="btn btn-outline"
+                    disabled={loading}
+                >
+                    Cancelar
+                </button>
+                <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={loading}
+                >
+                    {loading ? 'Anexando...' : 'Anexar Documento'}
+                </button>
+            </div>
+        </form>
+    );
+};
+
+// Componente separado para o formulário
+const DeliveryForm = ({ projectId, onClose, onSuccess }) => {
+    const [deliveryType, setDeliveryType] = useState('file');
+    const [file, setFile] = useState(null);
+    const [link, setLink] = useState('');
+    const [comments, setComments] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const { token } = useAuth();
+
+    const handleFileChange = (e) => {
+        const selectedFile = e.target.files[0];
+        if (selectedFile) {
+            if (!selectedFile.name.toLowerCase().endsWith('.txt')) {
+                setError('Apenas arquivos .txt são aceitos');
+                setFile(null);
+                return;
+            }
+            setError('');
+            setFile(selectedFile);
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+
+        try {
+            let name, fileUrl;
+
+            if (deliveryType === 'file' && file) {
+                name = file.name;
+                fileUrl = `Arquivo: ${file.name} (${file.size} bytes)`;
+            } else if (deliveryType === 'link' && link) {
+                name = `Link: ${link.substring(0, 50)}...`;
+                fileUrl = link;
+            } else {
+                throw new Error('Selecione um arquivo ou forneça um link');
+            }
+
+            console.log('Enviando entrega:', { projectId, name, fileUrl, comments });
+
+            const response = await fetch('http://localhost:3000/deliveries', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    projectId,
+                    name,
+                    comments,
+                    fileUrl
+                })
+            });
+
+            console.log('Resposta status:', response.status);
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log('Entrega criada:', result);
+                alert('Entrega enviada com sucesso!');
+                onSuccess();
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `Erro ${response.status}`);
+            }
+        } catch (err) {
+            console.error('Erro:', err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit}>
+            {error && (
+                <div style={{
+                    padding: '1rem',
+                    backgroundColor: 'rgba(248, 113, 113, 0.1)',
+                    border: '1px solid #ef4444',
+                    borderRadius: '8px',
+                    color: '#dc2626',
+                    marginBottom: '1.5rem'
+                }}>
+                    {error}
+                </div>
+            )}
+
+            {/* Tipo de entrega */}
+            <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                    Tipo de Entrega
+                </label>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                        <input
+                            type="radio"
+                            name="deliveryType"
+                            value="file"
+                            checked={deliveryType === 'file'}
+                            onChange={(e) => setDeliveryType(e.target.value)}
+                        />
+                        📄 Arquivo .txt
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                        <input
+                            type="radio"
+                            name="deliveryType"
+                            value="link"
+                            checked={deliveryType === 'link'}
+                            onChange={(e) => setDeliveryType(e.target.value)}
+                        />
+                        🔗 Link
+                    </label>
+                </div>
+            </div>
+
+            {/* Campo de arquivo ou link */}
+            {deliveryType === 'file' ? (
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                        Arquivo .txt
+                    </label>
+                    <input
+                        type="file"
+                        accept=".txt"
+                        onChange={handleFileChange}
+                        style={{ marginBottom: 0 }}
+                        required
+                    />
+                    {file && (
+                        <p className="text-sm text-muted" style={{ marginTop: '0.5rem' }}>
+                            ✅ Arquivo selecionado: {file.name}
+                        </p>
+                    )}
+                </div>
+            ) : (
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                        Link
+                    </label>
+                    <input
+                        type="url"
+                        value={link}
+                        onChange={(e) => setLink(e.target.value)}
+                        placeholder="https://exemplo.com"
+                        required
+                        style={{ marginBottom: 0 }}
+                    />
+                </div>
+            )}
+
+            {/* Comentários */}
+            <div style={{ marginBottom: '2rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                    Comentários (opcional)
+                </label>
+                <textarea
+                    value={comments}
+                    onChange={(e) => setComments(e.target.value)}
+                    placeholder="Descreva sua entrega..."
+                    rows="3"
+                    style={{ marginBottom: 0 }}
+                />
+            </div>
+
+            {/* Botões */}
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="btn btn-outline"
+                    disabled={loading}
+                >
+                    Cancelar
+                </button>
+                <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={loading}
+                >
+                    {loading ? 'Enviando...' : 'Enviar Entrega'}
+                </button>
+            </div>
+        </form>
     );
 };
 
