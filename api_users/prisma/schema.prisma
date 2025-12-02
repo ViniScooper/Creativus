@@ -1,0 +1,88 @@
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  TEACHER
+}
+
+enum ProjectStatus {
+  BRIEFING
+  PROTOTYPE
+  REVIEW
+  FINALIZATION
+}
+
+model User {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  email       String      @unique
+  password    String
+  name        String
+  role        UserRole    @default(STUDENT)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // Relações
+  projects    Project[]   @relation("StudentProjects")
+  teacherProjects Project[] @relation("TeacherProjects")
+  deliveries  Delivery[]
+  feedbacks   Feedback[]
+}
+
+model Project {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String
+  briefing    String
+  status      ProjectStatus @default(BRIEFING)
+  progress    Int           @default(0)
+  deadline    String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  // Relações
+  studentId   String        @db.ObjectId
+  student     User          @relation("StudentProjects", fields: [studentId], references: [id])
+  
+  teacherId   String?       @db.ObjectId
+  teacher     User?         @relation("TeacherProjects", fields: [teacherId], references: [id])
+  
+  deliveries  Delivery[]
+  feedbacks   Feedback[]
+}
+
+model Delivery {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  comments    String?
+  fileUrl     String?
+  createdAt   DateTime @default(now())
+  
+  // Relações
+  projectId   String   @db.ObjectId
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  userId      String   @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model Feedback {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  content     String
+  createdAt   DateTime @default(now())
+  
+  // Relações
+  projectId   String   @db.ObjectId
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  authorId    String   @db.ObjectId
+  author      User     @relation(fields: [authorId], references: [id])
+}

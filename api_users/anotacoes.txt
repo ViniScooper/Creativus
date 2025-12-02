@@ -1,0 +1,103 @@
+usei o comando npm init -y
+
+para tudo oque perguntar responder como "yes"
+
+
+vamos usar a biblioteca "express"
+
+comando npm i express
+
+"i de install"
+
+ADICIONEI ESSA PARTE NO ARQUIVO packge.json para poder ultilizar o import da melhor forma
+
+ "type": "module",
+
+
+
+
+
+
+ HTTP METODOS 
+
+ GET -> LISTAR 
+ POST -> CRIAR
+ PUT -> EDITAR VARIOS
+ PATCH -> EDITAR UM
+ DELETE -> DELETAR
+
+
+
+
+PRECISO DEFINIR O TIPO DE ROTA SE É GET, POST, DELTE... O METODO HTTP MESMA COISA
+
+PRECISO TAMBEM DETERMINAR ENDEREÇO
+
+
+EXEMPLO
+WWW.LOCALHOST/3000/USERS
+
+
+quando determino isso PRECISO DE UMA RESPOSTA 
+
+REQUEST E RESPONSE
+
+OU REQ E RES
+
+
+obejtivo criar uma listagem uma api de usuarios
+
+
+no servidor api usando mts requisicoes essas requisicoes preciasam de parametros para pesquisar coisas
+especificas tipo consultas
+
+ SERIA O QUERY PARAMS QUE USAMOS PARA ISSO
+
+passando o simbolo de "?" para passar os parametros
+
+EXEMPLO
+
+servidor.com/usuarios?estado=Pernambuco&cidade=recife
+
+entao fez essa consulta 
+
+para separar informacoes voce usa o "&"
+
+mas usamos isso para opceos normais sem se preucpar com seguraca
+
+users name like '%vini%'
+
+
+TAMBEM TEMOS O
+
+ROUTE PARAMS   (GET/PUT/DELETE)
+
+BUSCA .DELETA OU EDITA ALGO ESPECIFICO 
+
+
+TEMOS TAMBEM O  
+
+BODY PARAMS(POST E PUT)
+{
+    "nome": "Rodolfo","id": 22
+}
+
+serve para informcoes mais delicadasn ou quando sao muita informacoes
+
+//acima vai dar erro se voce nao parar o servidor e rodar novamente
+
+//mas a gente pode rodar esse comando que ele vai ficar reniciando o servidor automaticamente
+
+//node --watch server.js
+// ele restata o servidor automaticamente quando voce faz alguma mudanca no codigo
+// voce precisa dar o contra s para salvar mas como o vscode ja salva automaticamente, nao precisa fazer nada
+
+
+
+HTTP status
+
+COMECA COM 2 EH SUCESSO
+
+COMECA COM 4 EH erro
+
+COMECA COM 6 ERRO NO SERVIDOR
