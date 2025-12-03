@@ -411,11 +411,31 @@ app.put('/projects/:id/request-approval', authenticateToken, async (req, res) =>
         if (project.status === 'FINALIZATION') {
             return res.status(400).json({ error: 'Projeto já está finalizado.' });
         }
+        // Buscar dados do aluno
+        const student = await prisma.user.findUnique({
+            where: { id: req.user.id }
+        });
+
         // Muda status para REVIEW sempre (pode solicitar quantas vezes necessário)
         const updated = await prisma.project.update({
             where: { id: req.params.id },
             data: { status: 'REVIEW' }
         });
+
+        // Notificar professores sobre solicitação de aprovação
+        const teachers = await prisma.user.findMany({
+            where: { role: 'TEACHER' }
+        });
+        for (const teacher of teachers) {
+            await createNotification(
+                teacher.id,
+                'PROJECT_REVIEW_REQUESTED',
+                'Nova Solicitação de Aprovação',
+                `${student.name} solicitou aprovação para o projeto "${project.title}"`,
+                project.id
+            );
+        }
+
         res.json(updated);
     } catch (err) {
         console.error('Erro ao solicitar aprovação:', err);
@@ -452,7 +472,10 @@ app.put('/projects/:id/evaluate', authenticateToken, async (req, res) => {
             return res.status(403).json({ error: 'Apenas professores podem avaliar projetos.' });
         }
         const { grade, checklist } = req.body;
-        const project = await prisma.project.findUnique({ where: { id: req.params.id } });
+        const project = await prisma.project.findUnique({ 
+            where: { id: req.params.id },
+            include: { student: true }
+        });
         if (!project) return res.status(404).json({ error: 'Projeto não encontrado.' });
         // Bloqueia caso já finalizado
         if (project.status === 'FINALIZATION') {
@@ -481,6 +504,18 @@ app.put('/projects/:id/evaluate', authenticateToken, async (req, res) => {
                 }
             }
         }
+
+        // Notificar aluno sobre aprovação e nota
+        if (project.student) {
+            await createNotification(
+                project.student.id,
+                'PROJECT_APPROVED',
+                'Projeto Aprovado!',
+                `Seu projeto "${project.title}" foi aprovado! Nota: ${grade}/10`,
+                project.id
+            );
+        }
+
         return res.json({ message: 'Projeto avaliado e aprovado!', project: updatedProject });
     } catch (err) {
         res.status(500).json({ error: 'Erro ao avaliar projeto.' });
@@ -591,6 +626,12 @@ app.post('/feedback', authenticateToken, async (req, res) => {
 
         const { projectId, content } = req.body;
 
+        // Buscar projeto para notificar o aluno
+        const project = await prisma.project.findUnique({
+            where: { id: projectId },
+            include: { student: true }
+        });
+
         const feedback = await prisma.feedback.create({
             data: {
                 content,
@@ -603,6 +644,18 @@ app.post('/feedback', authenticateToken, async (req, res) => {
                 }
             }
         });
+
+        // Notificar aluno sobre novo feedback
+        if (project && project.student) {
+            await createNotification(
+                project.student.id,
+                'FEEDBACK_RECEIVED',
+                'Novo Feedback Recebido',
+                `Você recebeu um novo feedback no projeto "${project.title}"`,
+                project.id,
+                feedback.id
+            );
+        }
 
         return res.status(201).json(feedback);
     } catch (error) {
@@ -620,7 +673,10 @@ app.post('/feedback/:id/reply', authenticateToken, async (req, res) => {
         // Verificar se o feedback existe
         const feedback = await prisma.feedback.findUnique({
             where: { id: feedbackId },
-            include: { project: true }
+            include: { 
+                project: true,
+                author: true
+            }
         });
 
         if (!feedback) {
@@ -646,6 +702,41 @@ app.post('/feedback/:id/reply', authenticateToken, async (req, res) => {
                 }
             }
         });
+
+        // Buscar dados do autor da resposta
+        const replyAuthor = await prisma.user.findUnique({
+            where: { id: req.user.id }
+        });
+
+        // Notificar autor do feedback original sobre a resposta
+        // Se aluno respondeu, notificar professor; se professor respondeu, notificar aluno
+        if (req.user.role === 'STUDENT' && feedback.author.role === 'TEACHER') {
+            // Aluno respondeu feedback do professor
+            await createNotification(
+                feedback.author.id,
+                'FEEDBACK_RECEIVED',
+                'Resposta ao Feedback',
+                `${replyAuthor.name} respondeu seu feedback no projeto "${feedback.project.title}"`,
+                feedback.project.id,
+                reply.id
+            );
+        } else if (req.user.role === 'TEACHER' && feedback.author.role === 'STUDENT') {
+            // Professor respondeu feedback do aluno (caso raro, mas possível)
+            const project = await prisma.project.findUnique({
+                where: { id: feedback.project.id },
+                include: { student: true }
+            });
+            if (project && project.student) {
+                await createNotification(
+                    project.student.id,
+                    'FEEDBACK_RECEIVED',
+                    'Resposta ao Feedback',
+                    `Professor respondeu seu feedback no projeto "${project.title}"`,
+                    project.id,
+                    reply.id
+                );
+            }
+        }
 
         return res.status(201).json(reply);
     } catch (error) {
@@ -724,6 +815,103 @@ app.put('/profile/password', authenticateToken, async (req, res) => {
         return res.status(500).json({ error: 'Erro ao alterar senha' });
     }
 });
+
+// ==================== ROTAS DE NOTIFICAÇÕES ====================
+
+// Listar notificações do usuário
+app.get('/notifications', authenticateToken, async (req, res) => {
+    try {
+        const notifications = await prisma.notification.findMany({
+            where: { userId: req.user.id },
+            orderBy: { createdAt: 'desc' },
+            take: 50 // Últimas 50 notificações
+        });
+
+        const unreadCount = await prisma.notification.count({
+            where: {
+                userId: req.user.id,
+                isRead: false
+            }
+        });
+
+        return res.json({
+            notifications,
+            unreadCount
+        });
+    } catch (error) {
+        console.error('Erro ao buscar notificações:', error);
+        return res.status(500).json({ error: 'Erro ao buscar notificações' });
+    }
+});
+
+// Marcar notificação como lida
+app.put('/notifications/:id/read', authenticateToken, async (req, res) => {
+    try {
+        const notification = await prisma.notification.findUnique({
+            where: { id: req.params.id }
+        });
+
+        if (!notification) {
+            return res.status(404).json({ error: 'Notificação não encontrada' });
+        }
+
+        if (notification.userId !== req.user.id) {
+            return res.status(403).json({ error: 'Sem permissão para esta notificação' });
+        }
+
+        const updated = await prisma.notification.update({
+            where: { id: req.params.id },
+            data: {
+                isRead: true,
+                readAt: new Date()
+            }
+        });
+
+        return res.json(updated);
+    } catch (error) {
+        console.error('Erro ao marcar notificação como lida:', error);
+        return res.status(500).json({ error: 'Erro ao atualizar notificação' });
+    }
+});
+
+// Marcar todas as notificações como lidas
+app.put('/notifications/read-all', authenticateToken, async (req, res) => {
+    try {
+        await prisma.notification.updateMany({
+            where: {
+                userId: req.user.id,
+                isRead: false
+            },
+            data: {
+                isRead: true,
+                readAt: new Date()
+            }
+        });
+
+        return res.json({ message: 'Todas as notificações foram marcadas como lidas' });
+    } catch (error) {
+        console.error('Erro ao marcar todas como lidas:', error);
+        return res.status(500).json({ error: 'Erro ao atualizar notificações' });
+    }
+});
+
+// Função auxiliar para criar notificação
+const createNotification = async (userId, type, title, message, projectId = null, relatedId = null) => {
+    try {
+        await prisma.notification.create({
+            data: {
+                userId,
+                type,
+                title,
+                message,
+                projectId,
+                relatedId
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao criar notificação:', error);
+    }
+};
 
 // ==================== UTILITÁRIOS ====================
 

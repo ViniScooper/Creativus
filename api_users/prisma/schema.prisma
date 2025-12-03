@@ -21,6 +21,15 @@ enum ProjectStatus {
   FINALIZATION
 }
 
+enum NotificationType {
+  FEEDBACK_RECEIVED
+  PROJECT_APPROVED
+  PROJECT_REVIEW_REQUESTED
+  GRADE_PUBLISHED
+  DELIVERY_RECEIVED
+  SYSTEM_ANNOUNCEMENT
+}
+
 model User {
   id          String      @id @default(auto()) @map("_id") @db.ObjectId
   email       String      @unique
@@ -36,6 +45,7 @@ model User {
   deliveries  Delivery[]
   feedbacks   Feedback[]
   feedbackReplies FeedbackReply[]
+  notifications Notification[]
 }
 
 model Project {
@@ -114,4 +124,22 @@ model FeedbackReply {
   
   authorId    String   @db.ObjectId
   author      User     @relation(fields: [authorId], references: [id])
+}
+
+model Notification {
+  id          String           @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String           @db.ObjectId
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type        NotificationType
+  title       String
+  message     String
+  isRead      Boolean          @default(false)
+  readAt      DateTime?
+  
+  // Dados adicionais (opcional, para linkar com projeto, feedback, etc)
+  projectId   String?          @db.ObjectId
+  relatedId   String?          // ID de feedback, delivery, etc.
+  
+  createdAt   DateTime         @default(now())
 }

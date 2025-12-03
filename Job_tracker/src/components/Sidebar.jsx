@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, FolderKanban, Send, MessageSquare, Settings, LogOut, User } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import NotificationBell from './NotificationBell';
 
 const Sidebar = () => {
     const { user, logout } = useAuth();
@@ -26,22 +27,25 @@ const Sidebar = () => {
 
     return (
         <aside className="sidebar">
-            <div style={{ marginBottom: '3rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{
-                    width: '40px',
-                    height: '40px',
-                    background: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
-                    borderRadius: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 4px 10px rgba(139, 92, 246, 0.4)'
-                }}>
-                    <LayoutDashboard color="white" size={24} />
+            <div style={{ marginBottom: '3rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
+                    <div style={{
+                        width: '40px',
+                        height: '40px',
+                        background: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
+                        borderRadius: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 10px rgba(139, 92, 246, 0.4)'
+                    }}>
+                        <LayoutDashboard color="white" size={24} />
+                    </div>
+                    <h2 style={{ fontSize: '1.5rem', margin: 0, background: 'linear-gradient(to right, #fff, #a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                        Creativus
+                    </h2>
                 </div>
-                <h2 style={{ fontSize: '1.5rem', margin: 0, background: 'linear-gradient(to right, #fff, #a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                    Creativus
-                </h2>
+                <NotificationBell />
             </div>
 
             <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1 }}>
