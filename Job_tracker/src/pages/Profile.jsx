@@ -34,7 +34,7 @@ const Profile = () => {
         setLoading(true);
 
         try {
-            const response = await fetch('http://localhost:3000/profile', {
+            const response = await fetch('http://26.116.233.104:3000/profile', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -61,7 +61,7 @@ const Profile = () => {
             console.error('Erro detalhado ao atualizar perfil:', err);
             console.error('Status da resposta:', err.response?.status);
             console.error('Token presente:', !!token);
-            console.error('URL da API:', 'http://localhost:3000/profile');
+            console.error('URL da API:', 'http://26.116.233.104:3000/profile');
             console.error('Dados enviados:', {
                 name: formData.name,
                 email: formData.email
@@ -87,7 +87,7 @@ const Profile = () => {
         setLoading(true);
 
         try {
-            const response = await fetch('http://localhost:3000/profile/password', {
+            const response = await fetch('http://26.116.233.104:3000/profile/password', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

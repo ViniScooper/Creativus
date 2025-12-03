@@ -15,7 +15,7 @@ const Deliveries = () => {
 
     const fetchDeliveries = async () => {
         try {
-            const response = await fetch('http://localhost:3000/projects', {
+            const response = await fetch('http://26.116.233.104:3000/projects', {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }

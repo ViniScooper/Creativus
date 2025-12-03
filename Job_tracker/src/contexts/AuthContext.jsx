@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
     const [token, setToken] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const API_URL = 'http://localhost:3000';
+    const API_URL = 'http://26.116.233.104:3000';
 
     useEffect(() => {
         // Verificar se há um token salvo

@@ -53,8 +53,8 @@ const NewProjectModal = ({ isOpen, onClose, onProjectCreated, project = null }) 
             const formattedDeadline = `${day}/${month}/${year}`;
 
             const url = project
-                ? `http://localhost:3000/projects/${project.id}`
-                : 'http://localhost:3000/projects';
+                ? `http://26.116.233.104:3000/projects/${project.id}`
+                : 'http://26.116.233.104:3000/projects';
 
             const method = project ? 'PUT' : 'POST';
 

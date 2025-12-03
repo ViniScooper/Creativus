@@ -37,7 +37,7 @@ const Admin = () => {
     const fetchAdminData = async () => {
         try {
             // Buscar projetos
-            const projectsResponse = await fetch('http://localhost:3000/projects', {
+            const projectsResponse = await fetch('http://26.116.233.104:3000/projects', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
@@ -74,7 +74,7 @@ const Admin = () => {
     // Fetch projetos em REVIEW (prontos p/ aprovação)
     const fetchProjectsForApproval = async () => {
         try {
-            const res = await fetch('http://localhost:3000/admin/review-projects', {
+            const res = await fetch('http://26.116.233.104:3000/admin/review-projects', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -112,7 +112,7 @@ const Admin = () => {
 
     const submitEvaluate = async (id) => {
         try {
-            const res = await fetch(`http://localhost:3000/projects/${id}/evaluate`, {
+            const res = await fetch(`http://26.116.233.104:3000/projects/${id}/evaluate`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -248,13 +248,13 @@ const Admin = () => {
                                             <p className="text-sm text-muted">Prazo: {project.deadline}</p>
                                             <p className="text-sm text-muted">Nota atual: {project.grade ?? '-'}</p>
                                         </div>
-                                        <button className="btn btn-outline" onClick={() => openEvaluate(project)} style={{marginLeft:8}}>
+                                        <button className="btn btn-outline" onClick={() => openEvaluate(project)} style={{ marginLeft: 8 }}>
                                             Aprovar e Finalizar
                                         </button>
                                     </div>
                                     {/* Exibir checklist atual */}
                                     {project.checklist && project.checklist.length > 0 && (
-                                        <ul style={{marginTop:8}}>
+                                        <ul style={{ marginTop: 8 }}>
                                             {project.checklist.map(item => (
                                                 <li key={item.id}>{item.title} {item.isDone ? '✅' : '❌'}</li>
                                             ))}
@@ -268,23 +268,23 @@ const Admin = () => {
                     )}
                     {/* Modal de avaliação */}
                     {evaluatingProject && (
-                        <div className="modal" style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,.45)', display:'flex',alignItems:'center',justifyContent:'center'}}>
-                            <div className="card" style={{minWidth:320}}>
+                        <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div className="card" style={{ minWidth: 320 }}>
                                 <h4>Aprovar Projeto</h4>
                                 <p>Aluno: {evaluatingProject.student.name}</p>
                                 <label htmlFor="nota">Nota (0-10):</label>
-                                <input value={gradeInput} onChange={e=>setGradeInput(Number(e.target.value))} type="number" step="0.1" min="0" max="10" style={{width:'100%',marginBottom:12}}/>
+                                <input value={gradeInput} onChange={e => setGradeInput(Number(e.target.value))} type="number" step="0.1" min="0" max="10" style={{ width: '100%', marginBottom: 12 }} />
                                 <label>Checklist:</label>
                                 {checklistInput.map((item, idx) => (
-                                    <div key={idx} style={{display:'flex', gap:4,marginBottom:4}}>
-                                        <input value={item.title} onChange={e=>handleChecklistChange(idx,'title',e.target.value)} placeholder="Título"/>
-                                        <input type="checkbox" checked={item.isDone} onChange={e=>handleChecklistChange(idx,'isDone',e.target.checked)} />
+                                    <div key={idx} style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+                                        <input value={item.title} onChange={e => handleChecklistChange(idx, 'title', e.target.value)} placeholder="Título" />
+                                        <input type="checkbox" checked={item.isDone} onChange={e => handleChecklistChange(idx, 'isDone', e.target.checked)} />
                                     </div>
                                 ))}
                                 <button type="button" className="btn btn-secondary" onClick={handleAddChecklist}>Adicionar Item</button>
-                                <div style={{marginTop:16,display:'flex',gap:8}}>
-                                    <button className="btn btn-primary" onClick={()=>submitEvaluate(evaluatingProject.id)}>Salvar e Finalizar</button>
-                                    <button className="btn btn-outline" onClick={()=>setEvaluatingProject(null)}>Cancelar</button>
+                                <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+                                    <button className="btn btn-primary" onClick={() => submitEvaluate(evaluatingProject.id)}>Salvar e Finalizar</button>
+                                    <button className="btn btn-outline" onClick={() => setEvaluatingProject(null)}>Cancelar</button>
                                 </div>
                             </div>
                         </div>

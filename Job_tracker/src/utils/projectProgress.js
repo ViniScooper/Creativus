@@ -2,7 +2,7 @@
 const updateProjectProgress = async (projectId, token) => {
     try {
         // Buscar projeto atualizado
-        const response = await fetch(`http://localhost:3000/projects/${projectId}`, {
+        const response = await fetch(`http://26.116.233.104:3000/projects/${projectId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -53,7 +53,7 @@ const updateProjectProgress = async (projectId, token) => {
 
         // Atualizar apenas se houver mudança
         if (newProgress !== projectData.progress || newStatus !== projectData.status) {
-            await fetch(`http://localhost:3000/projects/${projectId}`, {
+            await fetch(`http://26.116.233.104:3000/projects/${projectId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

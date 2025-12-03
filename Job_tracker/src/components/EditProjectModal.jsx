@@ -41,7 +41,7 @@ const EditProjectModal = ({ isOpen, onClose, project, onProjectUpdated }) => {
             const [year, month, day] = formData.deadline.split('-');
             const formattedDeadline = `${day}/${month}/${year}`;
 
-            const response = await fetch(`http://localhost:3000/projects/${project.id}`, {
+            const response = await fetch(`http://26.116.233.104:3000/projects/${project.id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

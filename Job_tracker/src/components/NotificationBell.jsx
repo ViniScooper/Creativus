@@ -22,7 +22,7 @@ const NotificationBell = () => {
 
     const fetchNotifications = async () => {
         try {
-            const response = await fetch('http://localhost:3000/notifications', {
+            const response = await fetch('http://26.116.233.104:3000/notifications', {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -40,7 +40,7 @@ const NotificationBell = () => {
 
     const markAsRead = async (notificationId) => {
         try {
-            const response = await fetch(`http://localhost:3000/notifications/${notificationId}/read`, {
+            const response = await fetch(`http://26.116.233.104:3000/notifications/${notificationId}/read`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -61,7 +61,7 @@ const NotificationBell = () => {
     const markAllAsRead = async () => {
         setLoading(true);
         try {
-            const response = await fetch('http://localhost:3000/notifications/read-all', {
+            const response = await fetch('http://26.116.233.104:3000/notifications/read-all', {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`

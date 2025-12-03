@@ -16,7 +16,7 @@ const Feedback = () => {
 
     const fetchFeedbacks = async () => {
         try {
-            const response = await fetch('http://localhost:3000/projects', {
+            const response = await fetch('http://26.116.233.104:3000/projects', {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -64,7 +64,7 @@ const Feedback = () => {
         setReplyLoading(true);
 
         try {
-            const response = await fetch(`http://localhost:3000/feedback/${replyingToFeedback}/reply`, {
+            const response = await fetch(`http://26.116.233.104:3000/feedback/${replyingToFeedback}/reply`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -13,44 +13,44 @@ app.use(express.json());
 
 const JWT_SECRET = process.env.JWT_SECRET || 'seu-segredo-super-secreto-aqui-mude-em-producao';
 
-// Middleware de autenticação
+// Middleware de autenticaÃ§Ã£o
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-        return res.status(401).json({ error: 'Token não fornecido' });
+        return res.status(401).json({ error: 'Token nÃ£o fornecido' });
     }
 
     jwt.verify(token, JWT_SECRET, (err, user) => {
         if (err) {
-            return res.status(403).json({ error: 'Token inválido' });
+            return res.status(403).json({ error: 'Token invÃ¡lido' });
         }
         req.user = user;
         next();
     });
 };
 
-// ==================== ROTAS DE AUTENTICAÇÃO ====================
+// ==================== ROTAS DE AUTENTICAÃ‡ÃƒO ====================
 
-// Registro de novo usuário
+// Registro de novo usuÃ¡rio
 app.post('/auth/register', async (req, res) => {
     try {
         const { email, password, name, role } = req.body;
 
-        // Verificar se o usuário já existe
+        // Verificar se o usuÃ¡rio jÃ¡ existe
         const existingUser = await prisma.user.findUnique({
             where: { email }
         });
 
         if (existingUser) {
-            return res.status(400).json({ error: 'Usuário já existe' });
+            return res.status(400).json({ error: 'UsuÃ¡rio jÃ¡ existe' });
         }
 
         // Hash da senha
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Criar usuário
+        // Criar usuÃ¡rio
         const user = await prisma.user.create({
             data: {
                 email,
@@ -78,7 +78,7 @@ app.post('/auth/register', async (req, res) => {
         });
     } catch (error) {
         console.error('Erro no registro:', error);
-        return res.status(500).json({ error: 'Erro ao registrar usuário' });
+        return res.status(500).json({ error: 'Erro ao registrar usuÃ¡rio' });
     }
 });
 
@@ -87,20 +87,20 @@ app.post('/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Buscar usuário
+        // Buscar usuÃ¡rio
         const user = await prisma.user.findUnique({
             where: { email }
         });
 
         if (!user) {
-            return res.status(401).json({ error: 'Credenciais inválidas' });
+            return res.status(401).json({ error: 'Credenciais invÃ¡lidas' });
         }
 
         // Verificar senha
         const validPassword = await bcrypt.compare(password, user.password);
 
         if (!validPassword) {
-            return res.status(401).json({ error: 'Credenciais inválidas' });
+            return res.status(401).json({ error: 'Credenciais invÃ¡lidas' });
         }
 
         // Gerar token
@@ -125,7 +125,7 @@ app.post('/auth/login', async (req, res) => {
     }
 });
 
-// Obter dados do usuário autenticado
+// Obter dados do usuÃ¡rio autenticado
 app.get('/auth/me', authenticateToken, async (req, res) => {
     try {
         const user = await prisma.user.findUnique({
@@ -140,13 +140,13 @@ app.get('/auth/me', authenticateToken, async (req, res) => {
         });
 
         if (!user) {
-            return res.status(404).json({ error: 'Usuário não encontrado' });
+            return res.status(404).json({ error: 'UsuÃ¡rio nÃ£o encontrado' });
         }
 
         return res.status(200).json(user);
     } catch (error) {
-        console.error('Erro ao buscar usuário:', error);
-        return res.status(500).json({ error: 'Erro ao buscar dados do usuário' });
+        console.error('Erro ao buscar usuÃ¡rio:', error);
+        return res.status(500).json({ error: 'Erro ao buscar dados do usuÃ¡rio' });
     }
 });
 
@@ -158,7 +158,7 @@ app.get('/projects', authenticateToken, async (req, res) => {
         let projects;
 
         if (req.user.role === 'TEACHER') {
-            // Professor vê todos os projetos
+            // Professor vÃª todos os projetos
             projects = await prisma.project.findMany({
                 include: {
                     student: {
@@ -184,7 +184,7 @@ app.get('/projects', authenticateToken, async (req, res) => {
                 orderBy: { createdAt: 'desc' }
             });
         } else {
-            // Aluno vê apenas seus projetos
+            // Aluno vÃª apenas seus projetos
             projects = await prisma.project.findMany({
                 where: { studentId: req.user.id },
                 include: {
@@ -227,7 +227,7 @@ app.get('/projects', authenticateToken, async (req, res) => {
     }
 });
 
-// Buscar projeto específico
+// Buscar projeto especÃ­fico
 app.get('/projects/:id', authenticateToken, async (req, res) => {
     try {
         const project = await prisma.project.findUnique({
@@ -264,12 +264,12 @@ app.get('/projects/:id', authenticateToken, async (req, res) => {
         });
 
         if (!project) {
-            return res.status(404).json({ error: 'Projeto não encontrado' });
+            return res.status(404).json({ error: 'Projeto nÃ£o encontrado' });
         }
 
-        // Verificar permissão
+        // Verificar permissÃ£o
         if (req.user.role === 'STUDENT' && project.studentId !== req.user.id) {
-            return res.status(403).json({ error: 'Sem permissão para acessar este projeto' });
+            return res.status(403).json({ error: 'Sem permissÃ£o para acessar este projeto' });
         }
 
         // Garantir que projetos finalizados sempre tenham progresso 100%
@@ -357,7 +357,7 @@ app.put('/projects/:id', authenticateToken, async (req, res) => {
         const invalidFields = receivedFields.filter(field => !allowedFields.includes(field));
 
         if (invalidFields.length > 0) {
-            return res.status(400).json({ error: `Campos não permitidos: ${invalidFields.join(', ')}` });
+            return res.status(400).json({ error: `Campos nÃ£o permitidos: ${invalidFields.join(', ')}` });
         }
 
         const project = await prisma.project.findUnique({
@@ -365,12 +365,12 @@ app.put('/projects/:id', authenticateToken, async (req, res) => {
         });
 
         if (!project) {
-            return res.status(404).json({ error: 'Projeto não encontrado' });
+            return res.status(404).json({ error: 'Projeto nÃ£o encontrado' });
         }
 
-        // Verificar permissão
+        // Verificar permissÃ£o
         if (req.user.role === 'STUDENT' && project.studentId !== req.user.id) {
-            return res.status(403).json({ error: 'Sem permissão' });
+            return res.status(403).json({ error: 'Sem permissÃ£o' });
         }
 
         // Apenas professor ou dono podem concluir projeto
@@ -378,9 +378,9 @@ app.put('/projects/:id', authenticateToken, async (req, res) => {
             return res.status(403).json({ error: 'Apenas professores podem concluir projetos' });
         }
 
-        // Trava updates em projetos FINALIZATION em endpoints gerais de edição
+        // Trava updates em projetos FINALIZATION em endpoints gerais de ediÃ§Ã£o
         if (project.status === 'FINALIZATION') {
-            return res.status(400).json({ error: 'Projeto já está finalizado e não pode mais ser alterado.' });
+            return res.status(400).json({ error: 'Projeto jÃ¡ estÃ¡ finalizado e nÃ£o pode mais ser alterado.' });
         }
 
         const updatedProject = await prisma.project.update({
@@ -398,31 +398,31 @@ app.put('/projects/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// 1. Endpoint para aluno solicitar aprovação (status: REVIEW)
+// 1. Endpoint para aluno solicitar aprovaÃ§Ã£o (status: REVIEW)
 app.put('/projects/:id/request-approval', authenticateToken, async (req, res) => {
     try {
         if (req.user.role !== 'STUDENT') {
-            return res.status(403).json({ error: 'Apenas alunos podem solicitar aprovação.' });
+            return res.status(403).json({ error: 'Apenas alunos podem solicitar aprovaÃ§Ã£o.' });
         }
         const project = await prisma.project.findUnique({ where: { id: req.params.id } });
         if (!project || project.studentId !== req.user.id) {
-            return res.status(403).json({ error: 'Sem permissão para este projeto.' });
+            return res.status(403).json({ error: 'Sem permissÃ£o para este projeto.' });
         }
         if (project.status === 'FINALIZATION') {
-            return res.status(400).json({ error: 'Projeto já está finalizado.' });
+            return res.status(400).json({ error: 'Projeto jÃ¡ estÃ¡ finalizado.' });
         }
         // Buscar dados do aluno
         const student = await prisma.user.findUnique({
             where: { id: req.user.id }
         });
 
-        // Muda status para REVIEW sempre (pode solicitar quantas vezes necessário)
+        // Muda status para REVIEW sempre (pode solicitar quantas vezes necessÃ¡rio)
         const updated = await prisma.project.update({
             where: { id: req.params.id },
             data: { status: 'REVIEW' }
         });
 
-        // Notificar professores sobre solicitação de aprovação
+        // Notificar professores sobre solicitaÃ§Ã£o de aprovaÃ§Ã£o
         const teachers = await prisma.user.findMany({
             where: { role: 'TEACHER' }
         });
@@ -430,16 +430,16 @@ app.put('/projects/:id/request-approval', authenticateToken, async (req, res) =>
             await createNotification(
                 teacher.id,
                 'PROJECT_REVIEW_REQUESTED',
-                'Nova Solicitação de Aprovação',
-                `${student.name} solicitou aprovação para o projeto "${project.title}"`,
+                'Nova SolicitaÃ§Ã£o de AprovaÃ§Ã£o',
+                `${student.name} solicitou aprovaÃ§Ã£o para o projeto "${project.title}"`,
                 project.id
             );
         }
 
         res.json(updated);
     } catch (err) {
-        console.error('Erro ao solicitar aprovação:', err);
-        res.status(500).json({ error: 'Erro ao solicitar aprovação.' });
+        console.error('Erro ao solicitar aprovaÃ§Ã£o:', err);
+        res.status(500).json({ error: 'Erro ao solicitar aprovaÃ§Ã£o.' });
     }
 });
 
@@ -461,35 +461,35 @@ app.get('/admin/review-projects', authenticateToken, async (req, res) => {
         });
         res.json(projects);
     } catch (err) {
-        res.status(500).json({ error: 'Erro ao buscar projetos em revisão.' });
+        res.status(500).json({ error: 'Erro ao buscar projetos em revisÃ£o.' });
     }
 });
 
-// 3. Avaliação + aprovação final pelo professor (muda status para FINALIZATION)
+// 3. AvaliaÃ§Ã£o + aprovaÃ§Ã£o final pelo professor (muda status para FINALIZATION)
 app.put('/projects/:id/evaluate', authenticateToken, async (req, res) => {
     try {
         if (req.user.role !== 'TEACHER') {
             return res.status(403).json({ error: 'Apenas professores podem avaliar projetos.' });
         }
         const { grade, checklist } = req.body;
-        const project = await prisma.project.findUnique({ 
+        const project = await prisma.project.findUnique({
             where: { id: req.params.id },
             include: { student: true }
         });
-        if (!project) return res.status(404).json({ error: 'Projeto não encontrado.' });
-        // Bloqueia caso já finalizado
+        if (!project) return res.status(404).json({ error: 'Projeto nÃ£o encontrado.' });
+        // Bloqueia caso jÃ¡ finalizado
         if (project.status === 'FINALIZATION') {
-            return res.status(400).json({ error: 'Projeto já está finalizado.' });
+            return res.status(400).json({ error: 'Projeto jÃ¡ estÃ¡ finalizado.' });
         }
-        // Só pode aprovar se estiver em REVIEW
+        // SÃ³ pode aprovar se estiver em REVIEW
         if (project.status !== 'REVIEW') {
-            return res.status(400).json({ error: 'Projeto precisa estar em análise (REVIEW) para aprovação.' });
+            return res.status(400).json({ error: 'Projeto precisa estar em anÃ¡lise (REVIEW) para aprovaÃ§Ã£o.' });
         }
         // Atualizar nota, checklist, status e progresso para 100%
         const updatedProject = await prisma.project.update({
             where: { id: req.params.id },
-            data: { 
-                grade: grade, 
+            data: {
+                grade: grade,
                 status: 'FINALIZATION',
                 progress: 100
             }
@@ -505,7 +505,7 @@ app.put('/projects/:id/evaluate', authenticateToken, async (req, res) => {
             }
         }
 
-        // Notificar aluno sobre aprovação e nota
+        // Notificar aluno sobre aprovaÃ§Ã£o e nota
         if (project.student) {
             await createNotification(
                 project.student.id,
@@ -532,7 +532,7 @@ app.get('/admin/project-on-time', authenticateToken, async (req, res) => {
         const now = new Date();
         const projects = await prisma.project.findMany({
             where: {
-                deadline: { gte: now.toISOString().split('T')[0] }, // deadline ainda não passou
+                deadline: { gte: now.toISOString().split('T')[0] }, // deadline ainda nÃ£o passou
                 status: 'FINALIZATION'    // projeto finalizado
             },
             include: {
@@ -562,15 +562,15 @@ app.delete('/projects/:id', authenticateToken, async (req, res) => {
         });
 
         if (!project) {
-            return res.status(404).json({ error: 'Projeto não encontrado' });
+            return res.status(404).json({ error: 'Projeto nÃ£o encontrado' });
         }
 
-        // Verificar permissão (apenas o dono pode deletar)
+        // Verificar permissÃ£o (apenas o dono pode deletar)
         if (req.user.role === 'STUDENT' && project.studentId !== req.user.id) {
-            return res.status(403).json({ error: 'Sem permissão para deletar este projeto' });
+            return res.status(403).json({ error: 'Sem permissÃ£o para deletar este projeto' });
         }
 
-        // Deletar dependências primeiro (entregas e feedbacks)
+        // Deletar dependÃªncias primeiro (entregas e feedbacks)
         await prisma.delivery.deleteMany({
             where: { projectId: req.params.id }
         });
@@ -651,7 +651,7 @@ app.post('/feedback', authenticateToken, async (req, res) => {
                 project.student.id,
                 'FEEDBACK_RECEIVED',
                 'Novo Feedback Recebido',
-                `Você recebeu um novo feedback no projeto "${project.title}"`,
+                `VocÃª recebeu um novo feedback no projeto "${project.title}"`,
                 project.id,
                 feedback.id
             );
@@ -673,21 +673,21 @@ app.post('/feedback/:id/reply', authenticateToken, async (req, res) => {
         // Verificar se o feedback existe
         const feedback = await prisma.feedback.findUnique({
             where: { id: feedbackId },
-            include: { 
+            include: {
                 project: true,
                 author: true
             }
         });
 
         if (!feedback) {
-            return res.status(404).json({ error: 'Feedback não encontrado' });
+            return res.status(404).json({ error: 'Feedback nÃ£o encontrado' });
         }
 
-        // Verificar permissão:
+        // Verificar permissÃ£o:
         // - Professor pode responder qualquer feedback
-        // - Aluno só pode responder se for dono do projeto
+        // - Aluno sÃ³ pode responder se for dono do projeto
         if (req.user.role === 'STUDENT' && feedback.project.studentId !== req.user.id) {
-            return res.status(403).json({ error: 'Sem permissão para responder este feedback' });
+            return res.status(403).json({ error: 'Sem permissÃ£o para responder este feedback' });
         }
 
         const reply = await prisma.feedbackReply.create({
@@ -721,7 +721,7 @@ app.post('/feedback/:id/reply', authenticateToken, async (req, res) => {
                 reply.id
             );
         } else if (req.user.role === 'TEACHER' && feedback.author.role === 'STUDENT') {
-            // Professor respondeu feedback do aluno (caso raro, mas possível)
+            // Professor respondeu feedback do aluno (caso raro, mas possÃ­vel)
             const project = await prisma.project.findUnique({
                 where: { id: feedback.project.id },
                 include: { student: true }
@@ -747,19 +747,19 @@ app.post('/feedback/:id/reply', authenticateToken, async (req, res) => {
 
 // ==================== PERFIL ====================
 
-// Atualizar perfil do usuário
+// Atualizar perfil do usuÃ¡rio
 app.put('/profile', authenticateToken, async (req, res) => {
     try {
         const { name, email } = req.body;
 
-        // Verificar se email já está em uso por outro usuário
+        // Verificar se email jÃ¡ estÃ¡ em uso por outro usuÃ¡rio
         if (email && email !== req.user.email) {
             const existingUser = await prisma.user.findUnique({
                 where: { email }
             });
 
             if (existingUser) {
-                return res.status(400).json({ error: 'Email já está em uso' });
+                return res.status(400).json({ error: 'Email jÃ¡ estÃ¡ em uso' });
             }
         }
 
@@ -789,7 +789,7 @@ app.put('/profile/password', authenticateToken, async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
 
-        // Buscar usuário com senha
+        // Buscar usuÃ¡rio com senha
         const user = await prisma.user.findUnique({
             where: { id: req.user.id }
         });
@@ -816,15 +816,15 @@ app.put('/profile/password', authenticateToken, async (req, res) => {
     }
 });
 
-// ==================== ROTAS DE NOTIFICAÇÕES ====================
+// ==================== ROTAS DE NOTIFICAÃ‡Ã•ES ====================
 
-// Listar notificações do usuário
+// Listar notificaÃ§Ãµes do usuÃ¡rio
 app.get('/notifications', authenticateToken, async (req, res) => {
     try {
         const notifications = await prisma.notification.findMany({
             where: { userId: req.user.id },
             orderBy: { createdAt: 'desc' },
-            take: 50 // Últimas 50 notificações
+            take: 50 // Ãšltimas 50 notificaÃ§Ãµes
         });
 
         const unreadCount = await prisma.notification.count({
@@ -839,12 +839,12 @@ app.get('/notifications', authenticateToken, async (req, res) => {
             unreadCount
         });
     } catch (error) {
-        console.error('Erro ao buscar notificações:', error);
-        return res.status(500).json({ error: 'Erro ao buscar notificações' });
+        console.error('Erro ao buscar notificaÃ§Ãµes:', error);
+        return res.status(500).json({ error: 'Erro ao buscar notificaÃ§Ãµes' });
     }
 });
 
-// Marcar notificação como lida
+// Marcar notificaÃ§Ã£o como lida
 app.put('/notifications/:id/read', authenticateToken, async (req, res) => {
     try {
         const notification = await prisma.notification.findUnique({
@@ -852,11 +852,11 @@ app.put('/notifications/:id/read', authenticateToken, async (req, res) => {
         });
 
         if (!notification) {
-            return res.status(404).json({ error: 'Notificação não encontrada' });
+            return res.status(404).json({ error: 'NotificaÃ§Ã£o nÃ£o encontrada' });
         }
 
         if (notification.userId !== req.user.id) {
-            return res.status(403).json({ error: 'Sem permissão para esta notificação' });
+            return res.status(403).json({ error: 'Sem permissÃ£o para esta notificaÃ§Ã£o' });
         }
 
         const updated = await prisma.notification.update({
@@ -869,12 +869,12 @@ app.put('/notifications/:id/read', authenticateToken, async (req, res) => {
 
         return res.json(updated);
     } catch (error) {
-        console.error('Erro ao marcar notificação como lida:', error);
-        return res.status(500).json({ error: 'Erro ao atualizar notificação' });
+        console.error('Erro ao marcar notificaÃ§Ã£o como lida:', error);
+        return res.status(500).json({ error: 'Erro ao atualizar notificaÃ§Ã£o' });
     }
 });
 
-// Marcar todas as notificações como lidas
+// Marcar todas as notificaÃ§Ãµes como lidas
 app.put('/notifications/read-all', authenticateToken, async (req, res) => {
     try {
         await prisma.notification.updateMany({
@@ -888,14 +888,14 @@ app.put('/notifications/read-all', authenticateToken, async (req, res) => {
             }
         });
 
-        return res.json({ message: 'Todas as notificações foram marcadas como lidas' });
+        return res.json({ message: 'Todas as notificaÃ§Ãµes foram marcadas como lidas' });
     } catch (error) {
         console.error('Erro ao marcar todas como lidas:', error);
-        return res.status(500).json({ error: 'Erro ao atualizar notificações' });
+        return res.status(500).json({ error: 'Erro ao atualizar notificaÃ§Ãµes' });
     }
 });
 
-// Função auxiliar para criar notificação
+// FunÃ§Ã£o auxiliar para criar notificaÃ§Ã£o
 const createNotification = async (userId, type, title, message, projectId = null, relatedId = null) => {
     try {
         await prisma.notification.create({
@@ -909,19 +909,19 @@ const createNotification = async (userId, type, title, message, projectId = null
             }
         });
     } catch (error) {
-        console.error('Erro ao criar notificação:', error);
+        console.error('Erro ao criar notificaÃ§Ã£o:', error);
     }
 };
 
-// ==================== UTILITÁRIOS ====================
+// ==================== UTILITÃRIOS ====================
 
-// Endpoint para corrigir progresso de projetos finalizados (temporário)
+// Endpoint para corrigir progresso de projetos finalizados (temporÃ¡rio)
 app.put('/admin/fix-progress', authenticateToken, async (req, res) => {
     try {
         if (req.user.role !== 'TEACHER') {
-            return res.status(403).json({ error: 'Apenas professores podem executar esta ação' });
+            return res.status(403).json({ error: 'Apenas professores podem executar esta aÃ§Ã£o' });
         }
-        
+
         // Atualizar todos os projetos finalizados para progresso 100%
         const result = await prisma.project.updateMany({
             where: {
@@ -932,19 +932,20 @@ app.put('/admin/fix-progress', authenticateToken, async (req, res) => {
                 progress: 100
             }
         });
-        
-        return res.json({ 
-            message: `${result.count} projeto(s) atualizado(s) para 100% de progresso.` 
+
+        return res.json({
+            message: `${result.count} projeto(s) atualizado(s) para 100% de progresso.`
         });
     } catch (err) {
         console.error('Erro ao corrigir progresso:', err);
         res.status(500).json({ error: 'Erro ao corrigir progresso.' });
+
     }
 });
 
 // ==================== SERVIDOR ====================
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando na porta ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log('🚀 Servidor rodando na porta ' + PORT);
 });

@@ -27,7 +27,7 @@ const ProjectDetails = () => {
 
     const fetchProject = async () => {
         try {
-            const response = await fetch(`http://localhost:3000/projects/${id}`, {
+            const response = await fetch(`http://26.116.233.104:3000/projects/${id}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -95,7 +95,7 @@ const ProjectDetails = () => {
         setFeedbackLoading(true);
 
         try {
-            const response = await fetch(`http://localhost:3000/feedback/${replyingToFeedback}/reply`, {
+            const response = await fetch(`http://26.116.233.104:3000/feedback/${replyingToFeedback}/reply`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -130,7 +130,7 @@ const ProjectDetails = () => {
         }
 
         try {
-            const response = await fetch(`http://localhost:3000/projects/${project.id}`, {
+            const response = await fetch(`http://26.116.233.104:3000/projects/${project.id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -165,7 +165,7 @@ const ProjectDetails = () => {
 
         try {
             // Criar um novo feedback (apenas professores)
-            const response = await fetch('http://localhost:3000/feedback', {
+            const response = await fetch('http://26.116.233.104:3000/feedback', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -464,18 +464,18 @@ const ProjectDetails = () => {
                                     </div>
                                     <h3>Projeto Finalizado!</h3>
                                 </div>
-                                
+
                                 <div style={{ marginTop: '2rem' }}>
                                     <h4 style={{ marginBottom: '1rem' }}>Nota Final: {project.grade ? `${project.grade}/10` : 'Aguardando avaliação'}</h4>
-                                    
+
                                     {project.checklist && project.checklist.length > 0 ? (
                                         <div>
                                             <h5 style={{ marginBottom: '1rem' }}>Checklist de Avaliação:</h5>
                                             <ul style={{ listStyle: 'none', padding: 0 }}>
                                                 {project.checklist.map(item => (
-                                                    <li key={item.id} style={{ 
-                                                        padding: '0.75rem', 
-                                                        marginBottom: '0.5rem', 
+                                                    <li key={item.id} style={{
+                                                        padding: '0.75rem',
+                                                        marginBottom: '0.5rem',
                                                         backgroundColor: 'var(--color-bg-secondary)',
                                                         borderRadius: '0.5rem',
                                                         display: 'flex',
@@ -564,41 +564,41 @@ const ProjectDetails = () => {
     const renderGradeSection = () => {
         if (project.status !== 'FINALIZATION') return null;
         return (
-          <div className="card" style={{marginTop:16, marginBottom:16}}>
-            <h4>Nota Final: {project.grade ?? '-'}</h4>
-            <h5>Checklist:</h5>
-            {project.checklist && project.checklist.length > 0 ? (
-              <ul>
-                {project.checklist.map(item => (
-                  <li key={item.id}>{item.title} {item.isDone ? '✅' : '❌'}</li>
-                ))}
-              </ul>
-            ) : (
-              <p>Nenhum item marcado.</p>
-            )}
-          </div>
+            <div className="card" style={{ marginTop: 16, marginBottom: 16 }}>
+                <h4>Nota Final: {project.grade ?? '-'}</h4>
+                <h5>Checklist:</h5>
+                {project.checklist && project.checklist.length > 0 ? (
+                    <ul>
+                        {project.checklist.map(item => (
+                            <li key={item.id}>{item.title} {item.isDone ? '✅' : '❌'}</li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p>Nenhum item marcado.</p>
+                )}
+            </div>
         );
     };
 
     // Função para aluno solicitar aprovação
     const handleRequestApproval = async () => {
-      try {
-        const response = await fetch(`http://localhost:3000/projects/${project.id}/request-approval`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        if (response.ok) {
-          setRefreshKey(prev => prev + 1);
-          alert('Solicitação de aprovação enviada ao professor!');
-        } else {
-          const errorData = await response.json();
-          alert(errorData.error);
+        try {
+            const response = await fetch(`http://26.116.233.104:3000/projects/${project.id}/request-approval`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (response.ok) {
+                setRefreshKey(prev => prev + 1);
+                alert('Solicitação de aprovação enviada ao professor!');
+            } else {
+                const errorData = await response.json();
+                alert(errorData.error);
+            }
+        } catch (err) {
+            alert('Erro ao solicitar aprovação');
         }
-      } catch (err) {
-        alert('Erro ao solicitar aprovação');
-      }
     };
 
     return (
@@ -814,7 +814,7 @@ const BriefingForm = ({ projectId, onClose, onSuccess }) => {
 
             console.log('Enviando documento de briefing:', { projectId, name, fileUrl, comments });
 
-            const response = await fetch('http://localhost:3000/deliveries', {
+            const response = await fetch('http://26.116.233.104:3000/deliveries', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1005,7 +1005,7 @@ const DeliveryForm = ({ projectId, onClose, onSuccess }) => {
 
             console.log('Enviando entrega:', { projectId, name, fileUrl, comments });
 
-            const response = await fetch('http://localhost:3000/deliveries', {
+            const response = await fetch('http://26.116.233.104:3000/deliveries', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
